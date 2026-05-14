@@ -148,7 +148,7 @@ function App() {
     [apiStatus, health],
   )
 
-  if (pathname === '/auth' || pathname === '/login') {
+  if (pathname === '/' || pathname === '/auth' || pathname === '/login') {
     return <LoginPage />
   }
 
@@ -156,7 +156,7 @@ function App() {
     return <RegisterPage />
   }
 
-  if (pathname === '/' || pathname === '/home') {
+  if (pathname === '/home') {
     return <HomePage posts={demoPosts} aside={aside} />
   }
 

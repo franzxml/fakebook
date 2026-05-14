@@ -9,3 +9,4 @@ dist
 apps/api/prisma/dev.db
 apps/api/prisma/dev.db-*
 apps/api/src/generated/prisma
+docs/rules.pdf
