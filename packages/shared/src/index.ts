@@ -39,9 +39,11 @@ export type FeedPost = {
   }
 }
 
+export type NotificationType = 'post_like' | 'post_comment'
+
 export type AppNotification = {
   id: string
-  type: 'post_like' | 'post_comment' | string
+  type: NotificationType | string
   isRead: boolean
   actor: PublicUser | null
   post: {
@@ -50,6 +52,20 @@ export type AppNotification = {
     createdAt: string
   } | null
   createdAt: string
+}
+
+export type NotificationsResponse = {
+  notifications: AppNotification[]
+  unreadCount: number
+}
+
+export type NotificationResponse = {
+  notification: AppNotification
+}
+
+export type MarkNotificationsReadResponse = {
+  success: true
+  updated: number
 }
 
 export const appMetadata = {
