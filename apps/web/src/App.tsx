@@ -113,7 +113,6 @@ function App() {
 
   useEffect(() => {
     const handleNavigation = () => setPathname(window.location.pathname)
-
     window.addEventListener('popstate', handleNavigation)
     return () => window.removeEventListener('popstate', handleNavigation)
   }, [])
@@ -123,10 +122,7 @@ function App() {
 
     fetch(`${apiBaseUrl}/health`, { signal: controller.signal })
       .then((response) => {
-        if (!response.ok) {
-          throw new Error('API tidak tersedia.')
-        }
-
+        if (!response.ok) throw new Error('API tidak tersedia.')
         return response.json() as Promise<ApiHealth>
       })
       .then(setHealth)
@@ -137,6 +133,7 @@ function App() {
   }, [])
 
   const apiStatus = isLoading ? 'Mengecek API' : health ? 'API aktif' : 'API offline'
+
   const aside = useMemo(
     () => (
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -148,7 +145,9 @@ function App() {
     [apiStatus, health],
   )
 
-  if (pathname === '/' || pathname === '/auth' || pathname === '/login') {
+  // ===== ROUTING =====
+
+  if (pathname === '/auth' || pathname === '/login') {
     return <LoginPage />
   }
 
@@ -156,8 +155,15 @@ function App() {
     return <RegisterPage />
   }
 
-  if (pathname === '/home') {
-    return <HomePage posts={demoPosts} aside={aside} />
+  // Beranda — '/' dan '/home' keduanya menuju HomePage
+  if (pathname === '/' || pathname === '/home') {
+    return (
+      <HomePage
+        posts={demoPosts}
+        aside={aside}
+        currentUser={demoUser}
+      />
+    )
   }
 
   if (pathname.startsWith('/posts/')) {

@@ -1,99 +1,186 @@
 import type { ReactNode } from 'react'
-import { Bell, Home, Search, User, Users } from 'lucide-react'
-import { appMetadata } from '@ppwl/shared'
+import { Home, Bell, Users, User, LogOut } from 'lucide-react'
+import type { PublicUser } from '@ppwl/shared'
 
 type AppLayoutProps = {
   children: ReactNode
   aside?: ReactNode
-  sidebar?: ReactNode
+  currentUser?: PublicUser | null
+  currentPath?: string
 }
 
-export function AppLayout({ children, aside, sidebar }: AppLayoutProps) {
+function navigate(path: string) {
+  window.history.pushState({}, '', path)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+type NavItem = {
+  label: string
+  path: string
+  icon: ReactNode
+}
+
+const navItems: NavItem[] = [
+  { label: 'Beranda', path: '/home', icon: <Home size={22} /> },
+  { label: 'Notifikasi', path: '/notifications', icon: <Bell size={22} /> },
+  { label: 'Pengguna', path: '/users', icon: <Users size={22} /> },
+  { label: 'Profil', path: '/profile', icon: <User size={22} /> },
+]
+
+export function AppLayout({ children, aside, currentUser, currentPath = '' }: AppLayoutProps) {
+  // Mengambil title secara dinamis dari <title> yang ada di apps/web/index.html
+  // Jika di index.html tertulis "PPWL Clone Facebook", maka otomatis terambil teks tersebut.
+  const siteTitle = typeof document !== 'undefined' ? document.title : 'Facebook'
+  
+  // Opsional: Jika ingin logonya hanya menampilkan kata terakhir (ex: "facebook") dari "PPWL Clone Facebook"
+  const logoText = siteTitle.split(' ').pop()?.toLowerCase() || 'facebook'
+
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-950">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-4 px-4">
-          <a href="/" className="text-xl font-bold text-blue-600">
-            {appMetadata.name}
-          </a>
-          <label className="hidden flex-1 items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-500 sm:flex">
-            <Search className="size-4" aria-hidden="true" />
-            <span>Cari teman atau postingan</span>
-          </label>
-          <nav className="ml-auto flex items-center gap-2">
-            <NavIcon href="/" label="Beranda" icon={<Home className="size-5" aria-hidden="true" />} />
-            <NavIcon
-              href="/profile"
-              label="Profil"
-              icon={<User className="size-5" aria-hidden="true" />}
-            />
-            <NavIcon
-              href="/notifications"
-              label="Notifikasi"
-              icon={<Bell className="size-5" aria-hidden="true" />}
-            />
+    <div className="min-h-screen bg-[#f0f2f5]">
+      {/* ===== NAVBAR ===== */}
+      <header className="sticky top-0 z-50 bg-white shadow-sm">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+          {/* Logo Dinamis berdasarkan index.html */}
+          <button
+            onClick={() => navigate('/home')}
+            className="text-2xl font-extrabold tracking-tight text-[#1877f2] select-none lowercase"
+            title={siteTitle}
+          >
+            {logoText}
+          </button>
+
+          {/* Nav tengah */}
+          <nav className="hidden md:flex items-center gap-1">
+            {navItems.map((item) => {
+              const isActive = currentPath === item.path
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  title={item.label}
+                  className={[
+                    'flex flex-col items-center justify-center px-8 py-2 rounded-lg transition-colors',
+                    isActive
+                      ? 'text-[#1877f2] border-b-2 border-[#1877f2]'
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+                  ].join(' ')}
+                >
+                  {item.icon}
+                </button>
+              )
+            })}
           </nav>
+
+          {/* Kanan: avatar + logout */}
+          <div className="flex items-center gap-2">
+            {currentUser ? (
+              <>
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="flex items-center gap-2 rounded-full px-3 py-1.5 hover:bg-slate-100 transition-colors"
+                >
+                  <AvatarCircle user={currentUser} size="sm" />
+                  <span className="hidden md:block text-sm font-medium text-slate-800 max-w-[120px] truncate">
+                    {currentUser.name}
+                  </span>
+                </button>
+                <button
+                  onClick={() => navigate('/auth')}
+                  title="Keluar"
+                  className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-red-500 transition-colors"
+                >
+                  <LogOut size={18} />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => navigate('/auth')}
+                className="rounded-lg bg-[#1877f2] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#166fe5] transition-colors"
+              >
+                Masuk
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Nav bawah untuk mobile */}
+        <nav className="flex md:hidden border-t border-slate-100 bg-white">
+          {navItems.map((item) => {
+            const isActive = currentPath === item.path
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                title={item.label}
+                className={[
+                  'flex flex-1 flex-col items-center justify-center py-2 text-xs transition-colors',
+                  isActive
+                    ? 'text-[#1877f2] border-b-2 border-[#1877f2]'
+                    : 'text-slate-500',
+                ].join(' ')}
+              >
+                {item.icon}
+                <span className="mt-0.5 text-[10px]">{item.label}</span>
+              </button>
+            )
+          })}
+        </nav>
       </header>
 
-      <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[220px_1fr_260px]">
-        <aside className="hidden space-y-2 lg:block">
-          {sidebar ?? (
-            <>
-              <SidebarLink href="/" icon={<Home className="size-5" aria-hidden="true" />} label="Beranda" />
-              <SidebarLink
-                href="/users"
-                icon={<Users className="size-5" aria-hidden="true" />}
-                label="Teman"
-              />
-              <SidebarLink
-                href="/notifications"
-                icon={<Bell className="size-5" aria-hidden="true" />}
-                label="Notifikasi"
-              />
-            </>
+      {/* ===== BODY ===== */}
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        <div className="flex gap-6">
+          {/* Konten utama */}
+          <div className="min-w-0 flex-1">{children}</div>
+
+          {/* Aside (opsional) */}
+          {aside && (
+            <aside className="hidden lg:block w-72 shrink-0 space-y-4">
+              {aside}
+            </aside>
           )}
-        </aside>
-        <section className="space-y-4">{children}</section>
-        <aside className="space-y-4">{aside}</aside>
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   )
 }
 
-type NavIconProps = {
-  href: string
-  label: string
-  icon: ReactNode
+// ===== Komponen Avatar =====
+type AvatarProps = {
+  user: Pick<PublicUser, 'name' | 'avatarUrl'>
+  size?: 'sm' | 'md' | 'lg'
 }
 
-function NavIcon({ href, label, icon }: NavIconProps) {
+export function AvatarCircle({ user, size = 'md' }: AvatarProps) {
+  const sizeClass = {
+    sm: 'h-8 w-8 text-xs',
+    md: 'h-10 w-10 text-sm',
+    lg: 'h-12 w-12 text-base',
+  }[size]
+
+  const initials = (user.name || 'U')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+
+  if (user.avatarUrl) {
+    return (
+      <img
+        src={user.avatarUrl}
+        alt={user.name || 'User'}
+        className={`${sizeClass} rounded-full object-cover bg-slate-200`}
+      />
+    )
+  }
+
   return (
-    <a
-      href={href}
-      aria-label={label}
-      title={label}
-      className="flex size-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-blue-600"
+    <div
+      className={`${sizeClass} flex items-center justify-center rounded-full bg-[#1877f2] font-semibold text-white select-none`}
     >
-      {icon}
-    </a>
-  )
-}
-
-type SidebarLinkProps = {
-  href: string
-  icon: ReactNode
-  label: string
-}
-
-function SidebarLink({ href, icon, label }: SidebarLinkProps) {
-  return (
-    <a
-      href={href}
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-white hover:text-blue-600"
-    >
-      {icon}
-      {label}
-    </a>
+      {initials}
+    </div>
   )
 }

@@ -1,3 +1,15 @@
+import type { FeedPost } from '@ppwl/shared'
+
+export type FeedResponse = {
+  posts: FeedPost[]
+  meta: {
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+  }
+}
+
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 type RequestOptions = {
@@ -28,6 +40,39 @@ export async function apiRequest<TResponse>(path: string, options: RequestOption
   }
 
   return response.json() as Promise<TResponse>
+}
+
+/* Ambil daftar postingan untuk feed */
+export async function fetchFeed(page = 1, limit = 10): Promise<FeedResponse> {
+  const res = await fetch(
+    `${apiBaseUrl}/posts/feed?page=${page}&limit=${limit}`,
+  )
+  if (!res.ok) throw new Error('Gagal mengambil feed')
+  return res.json() as Promise<FeedResponse>
+}
+
+/* Buat postingan baru */
+export async function createPost(
+  content: string,
+  token: string,
+): Promise<FeedPost> {
+  const res = await fetch(`${apiBaseUrl}/posts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ content }),
+  })
+  if (!res.ok) throw new Error('Gagal membuat postingan')
+  return res.json() as Promise<FeedPost>
+}
+
+/** Ambil detail satu postingan */
+export async function fetchPostDetail(postId: string) {
+  const res = await fetch(`${apiBaseUrl}/posts/${postId}`)
+  if (!res.ok) throw new Error('Postingan tidak ditemukan')
+  return res.json()
 }
 
 export { apiBaseUrl }
