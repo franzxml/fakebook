@@ -10,6 +10,17 @@ const publicUserSelect = {
   avatarUrl: true,
 } as const
 
+const notificationInclude = {
+  actor: { select: publicUserSelect },
+  post: {
+    select: {
+      id: true,
+      content: true,
+      createdAt: true,
+    },
+  },
+} as const
+
 export const notificationRoutes = new Elysia({ prefix: '/notifications' })
   .get('/', async ({ request, set }) => {
     const user = await getCurrentUser(request.headers)
@@ -21,22 +32,37 @@ export const notificationRoutes = new Elysia({ prefix: '/notifications' })
 
     const notifications = await prisma.notification.findMany({
       where: { recipientId: user.id },
-      include: {
-        actor: { select: publicUserSelect },
-        post: {
-          select: {
-            id: true,
-            content: true,
-            createdAt: true,
-          },
-        },
-      },
+      include: notificationInclude,
       orderBy: {
         createdAt: 'desc',
       },
     })
 
-    return { notifications }
+    const unreadCount = await prisma.notification.count({
+      where: {
+        recipientId: user.id,
+        isRead: false,
+      },
+    })
+
+    return { notifications, unreadCount }
+  })
+  .get('/unread-count', async ({ request, set }) => {
+    const user = await getCurrentUser(request.headers)
+
+    if (!user) {
+      set.status = 401
+      return errorPayload('Sesi tidak valid.')
+    }
+
+    const unreadCount = await prisma.notification.count({
+      where: {
+        recipientId: user.id,
+        isRead: false,
+      },
+    })
+
+    return { unreadCount }
   })
   .patch('/read-all', async ({ request, set }) => {
     const user = await getCurrentUser(request.headers)
@@ -84,6 +110,7 @@ export const notificationRoutes = new Elysia({ prefix: '/notifications' })
     const updatedNotification = await prisma.notification.update({
       where: { id: notification.id },
       data: { isRead: true },
+      include: notificationInclude,
     })
 
     return { notification: updatedNotification }
