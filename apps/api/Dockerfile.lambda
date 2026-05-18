@@ -12,6 +12,7 @@ WORKDIR /app
 
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.1 /lambda-adapter /opt/extensions/lambda-adapter
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY package.json bun.lock tsconfig.base.json ./
 COPY apps/api ./apps/api
 COPY packages/shared ./packages/shared
