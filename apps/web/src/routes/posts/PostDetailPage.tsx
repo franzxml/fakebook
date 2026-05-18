@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AppLayout } from '@/layouts/AppLayout'
+import { fetchPostComments } from '@/services/api'
 import type { FeedPost, PostComment } from '@/types/social'
 import { CommentComposer } from './components/CommentComposer'
 import { CommentList } from './components/CommentList'
@@ -21,13 +22,13 @@ function stopPropagation(event: React.MouseEvent) {
 }
 
 export function PostDetailPage({ post, comments: initialComments, onClose }: PostDetailPageProps) {
-  const [comments, setComments] = useState<PostComment[]>(
-    initialComments?.length ? initialComments : fallbackPostComments,
-  )
+  const [comments, setComments] = useState<PostComment[]>(initialComments ?? fallbackPostComments)
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post._count.likes || 8)
   const [commentInput, setCommentInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingComments, setIsLoadingComments] = useState(true)
+  const [commentError, setCommentError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const isModal = Boolean(onClose)
   const isAtLimit = comments.length >= MAX_COMMENTS
@@ -49,6 +50,30 @@ export function PostDetailPage({ post, comments: initialComments, onClose }: Pos
       document.body.style.overflow = originalOverflow
     }
   }, [onClose])
+
+  useEffect(() => {
+    let isMounted = true
+
+    fetchPostComments(post.id)
+      .then((response) => {
+        if (!isMounted) return
+        setCommentError(null)
+        setComments(response.comments)
+      })
+      .catch(() => {
+        if (!isMounted) return
+        setCommentError('Gagal memuat komentar dari backend.')
+        setComments(initialComments ?? fallbackPostComments)
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setIsLoadingComments(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [initialComments, post.id])
 
   function handleLike() {
     setLiked((currentLiked) => {
@@ -111,7 +136,21 @@ export function PostDetailPage({ post, comments: initialComments, onClose }: Pos
           </button>
         </div>
 
-        <CommentList comments={comments} />
+        {isLoadingComments ? (
+          <div className="px-4 py-6 text-center text-sm text-[#65676B]">
+            Memuat komentar...
+          </div>
+        ) : commentError ? (
+          <div className="px-4 py-6 text-center text-sm font-medium text-red-500">
+            {commentError}
+          </div>
+        ) : comments.length === 0 ? (
+          <div className="px-4 py-6 text-center text-sm text-[#65676B]">
+            Belum ada komentar.
+          </div>
+        ) : (
+          <CommentList comments={comments} />
+        )}
       </div>
 
       <CommentComposer

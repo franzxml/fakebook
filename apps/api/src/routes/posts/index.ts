@@ -42,6 +42,42 @@ const cleanImageUrls = (imageUrls: string[] | undefined) =>
   imageUrls?.map((imageUrl) => imageUrl.trim()).filter(Boolean) ?? []
 
 export const postRoutes = new Elysia({ prefix: '/posts' })
+  .get(
+    '/feed',
+    async ({ query }) => {
+      const page = Number(query.page ?? 1)
+      const limit = Math.min(Number(query.limit ?? 10), 50)
+      const skip = (Math.max(page, 1) - 1) * limit
+
+      const [posts, total] = await Promise.all([
+        prisma.post.findMany({
+          include: postInclude,
+          orderBy: {
+            createdAt: 'desc',
+          },
+          skip,
+          take: limit,
+        }),
+        prisma.post.count(),
+      ])
+
+      return {
+        posts,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.max(Math.ceil(total / limit), 1),
+        },
+      }
+    },
+    {
+      query: t.Object({
+        page: t.Optional(t.String()),
+        limit: t.Optional(t.String()),
+      }),
+    },
+  )
   .get('/', async ({ request, set }) => {
     const user = await getCurrentUser(request.headers)
 
@@ -194,12 +230,15 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
 
     return { success: true }
   })
-  .get('/:postId/comments', async ({ params, request, set }) => {
-    const user = await getCurrentUser(request.headers)
+  .get('/:postId/comments', async ({ params, set }) => {
+    const post = await prisma.post.findUnique({
+      where: { id: params.postId },
+      select: { id: true },
+    })
 
-    if (!user) {
-      set.status = 401
-      return errorPayload('Sesi tidak valid.')
+    if (!post) {
+      set.status = 404
+      return errorPayload('Postingan tidak ditemukan.')
     }
 
     const comments = await prisma.comment.findMany({

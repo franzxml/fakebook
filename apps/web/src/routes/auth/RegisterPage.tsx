@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronLeft, CircleAlert, CircleHelp, Eye, EyeOff } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { register } from '@/services/api'
 
 const footerLinks = [
   'Daftar',
@@ -154,6 +155,8 @@ export function RegisterPage() {
   const [isPasswordTouched, setIsPasswordTouched] = useState(false)
   const [isBirthdateInfoOpen, setIsBirthdateInfoOpen] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const nameError = isNameTouched && (firstName.trim().length < 2 || lastName.trim().length < 2)
   const trimmedContact = contact.trim()
   const isEmailContact = trimmedContact.includes('@')
@@ -189,9 +192,41 @@ export function RegisterPage() {
     }
   }, [isBirthdateInfoOpen])
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsNameTouched(true)
+    setIsContactTouched(true)
+    setIsPasswordTouched(true)
+    setSubmitError(null)
+
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedContact)
+    const hasNameError = firstName.trim().length < 2 || lastName.trim().length < 2
+    const hasPasswordError =
+      password.length < 6 || !/[A-Za-z]/.test(password) || !/\d/.test(password) || !passwordPunctuationPattern.test(password)
+
+    if (hasNameError || hasPasswordError || !isValidEmail || isSubmitting) {
+      if (!isValidEmail) {
+        setSubmitError('Untuk saat ini registrasi backend membutuhkan alamat email yang valid.')
+      }
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      await register({
+        name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+        email: trimmedContact,
+        password,
+      })
+
+      window.history.pushState({}, '', '/home')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Registrasi gagal. Coba lagi.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -417,11 +452,18 @@ export function RegisterPage() {
           </section>
 
           <div className="space-y-3 pb-3">
+            {submitError ? (
+              <p className="flex gap-2 rounded-2xl border border-[#e41e3f]/30 bg-[#fff5f7] px-4 py-3 text-[16px] font-semibold leading-snug text-[#e41e3f]" role="alert">
+                <CircleAlert className="mt-0.5 size-5 shrink-0" aria-hidden="true" strokeWidth={2.2} />
+                <span>{submitError}</span>
+              </p>
+            ) : null}
             <button
               type="submit"
-              className="h-[52px] w-full rounded-full bg-[#0866e8] px-6 text-[19px] font-bold text-white transition hover:bg-[#075bce] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1877f2]/25"
+              disabled={isSubmitting}
+              className="h-[52px] w-full rounded-full bg-[#0866e8] px-6 text-[19px] font-bold text-white transition hover:bg-[#075bce] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1877f2]/25"
             >
-              Kirim
+              {isSubmitting ? 'Memproses...' : 'Kirim'}
             </button>
             <a
               href="/auth"
