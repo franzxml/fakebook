@@ -16,6 +16,14 @@ export type PostCommentsResponse = {
   comments: PostComment[]
 }
 
+export type CreatePostResponse = {
+  post: FeedPost
+}
+
+export type CreateCommentResponse = {
+  comment: PostComment
+}
+
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 type RequestOptions = {
@@ -33,6 +41,10 @@ type RegisterInput = {
   name: string
   email: string
   password: string
+}
+
+type GoogleOAuthInput = {
+  credential: string
 }
 
 export async function apiRequest<TResponse>(path: string, options: RequestOptions = {}) {
@@ -107,6 +119,16 @@ export async function register(input: RegisterInput) {
   return auth
 }
 
+export async function loginWithGoogle(input: GoogleOAuthInput) {
+  const auth = await apiRequest<AuthResponse>('/auth/oauth/google', {
+    method: 'POST',
+    body: input,
+  })
+
+  saveAuthSession(auth)
+  return auth
+}
+
 /* Ambil daftar postingan untuk feed */
 export async function fetchFeed(page = 1, limit = 10): Promise<FeedResponse> {
   return apiRequest<FeedResponse>(`/posts/feed?page=${page}&limit=${limit}`)
@@ -115,6 +137,30 @@ export async function fetchFeed(page = 1, limit = 10): Promise<FeedResponse> {
 /* Ambil komentar postingan untuk modal/detail postingan */
 export async function fetchPostComments(postId: string): Promise<PostCommentsResponse> {
   return apiRequest<PostCommentsResponse>(`/posts/${postId}/comments`)
+}
+
+export async function createPostComment(postId: string, content: string, token: string): Promise<PostComment> {
+  const response = await apiRequest<CreateCommentResponse>(`/posts/${postId}/comments`, {
+    method: 'POST',
+    token,
+    body: { content },
+  })
+
+  return response.comment
+}
+
+export async function likePost(postId: string, token: string) {
+  return apiRequest<{ like: unknown }>(`/posts/${postId}/likes`, {
+    method: 'POST',
+    token,
+  })
+}
+
+export async function unlikePost(postId: string, token: string) {
+  return apiRequest<{ success: true }>(`/posts/${postId}/likes`, {
+    method: 'DELETE',
+    token,
+  })
 }
 
 /* Ambil notifikasi dummy dari backend untuk halaman list notifikasi */
@@ -126,17 +172,15 @@ export async function fetchNotificationFeed(): Promise<NotificationsResponse> {
 export async function createPost(
   content: string,
   token: string,
+  imageUrls: string[] = [],
 ): Promise<FeedPost> {
-  const res = await fetch(`${apiBaseUrl}/posts`, {
+  const response = await apiRequest<CreatePostResponse>('/posts', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ content }),
+    token,
+    body: { content, imageUrls },
   })
-  if (!res.ok) throw new Error('Gagal membuat postingan')
-  return res.json() as Promise<FeedPost>
+
+  return response.post
 }
 
 /** Ambil detail satu postingan */

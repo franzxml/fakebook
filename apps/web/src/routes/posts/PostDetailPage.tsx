@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AppLayout } from '@/layouts/AppLayout'
-import { fetchPostComments } from '@/services/api'
+import { createPostComment, fetchPostComments, getStoredSession, getStoredUser, likePost, unlikePost } from '@/services/api'
 import type { FeedPost, PostComment } from '@/types/social'
 import { CommentComposer } from './components/CommentComposer'
 import { CommentList } from './components/CommentList'
@@ -14,6 +14,7 @@ const MAX_COMMENTS = 5
 type PostDetailPageProps = {
   post: FeedPost
   comments?: PostComment[]
+  autoFocusComment?: boolean
   onClose?: () => void
 }
 
@@ -21,15 +22,18 @@ function stopPropagation(event: React.MouseEvent) {
   event.stopPropagation()
 }
 
-export function PostDetailPage({ post, comments: initialComments, onClose }: PostDetailPageProps) {
+export function PostDetailPage({ post, comments: initialComments, autoFocusComment = false, onClose }: PostDetailPageProps) {
   const [comments, setComments] = useState<PostComment[]>(initialComments ?? fallbackPostComments)
   const [liked, setLiked] = useState(false)
-  const [likeCount, setLikeCount] = useState(post._count.likes || 8)
+  const [likeCount, setLikeCount] = useState(post._count.likes)
   const [commentInput, setCommentInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUpdatingLike, setIsUpdatingLike] = useState(false)
   const [isLoadingComments, setIsLoadingComments] = useState(true)
   const [commentError, setCommentError] = useState<string | null>(null)
+  const [composerError, setComposerError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const currentUser = getStoredUser()
   const isModal = Boolean(onClose)
   const isAtLimit = comments.length >= MAX_COMMENTS
 
@@ -75,36 +79,69 @@ export function PostDetailPage({ post, comments: initialComments, onClose }: Pos
     }
   }, [initialComments, post.id])
 
-  function handleLike() {
-    setLiked((currentLiked) => {
-      setLikeCount((currentCount) => currentCount + (currentLiked ? -1 : 1))
-      return !currentLiked
-    })
+  useEffect(() => {
+    if (!autoFocusComment) return
+
+    window.setTimeout(() => {
+      inputRef.current?.focus()
+      inputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 150)
+  }, [autoFocusComment])
+
+  async function handleLike() {
+    const session = getStoredSession()
+
+    if (!session?.token || isUpdatingLike) {
+      setComposerError('Sesi tidak ditemukan. Silakan login ulang.')
+      return
+    }
+
+    const nextLiked = !liked
+
+    setIsUpdatingLike(true)
+    setComposerError(null)
+    setLiked(nextLiked)
+    setLikeCount((currentCount) => Math.max(currentCount + (nextLiked ? 1 : -1), 0))
+
+    try {
+      if (nextLiked) {
+        await likePost(post.id, session.token)
+      } else {
+        await unlikePost(post.id, session.token)
+      }
+    } catch (error) {
+      setLiked(!nextLiked)
+      setLikeCount((currentCount) => Math.max(currentCount + (nextLiked ? -1 : 1), 0))
+      setComposerError(error instanceof Error ? error.message : 'Aksi suka gagal diproses.')
+    } finally {
+      setIsUpdatingLike(false)
+    }
   }
 
-  function handleSubmitComment() {
+  async function handleSubmitComment() {
     const trimmed = commentInput.trim()
     if (!trimmed || isSubmitting || isAtLimit) return
 
+    const session = getStoredSession()
+
+    if (!session?.token) {
+      setComposerError('Sesi tidak ditemukan. Silakan login ulang.')
+      return
+    }
+
     setIsSubmitting(true)
+    setComposerError(null)
 
-    setTimeout(() => {
-      const now = new Date().toISOString()
-
-      setComments((currentComments) => [
-        ...currentComments,
-        {
-          id: `c-${Date.now()}`,
-          content: trimmed,
-          author: { id: 'me', name: 'Khairunnisa', email: 'khrnsa@example.com', avatarUrl: null },
-          createdAt: now,
-          updatedAt: now,
-        },
-      ])
+    try {
+      const comment = await createPostComment(post.id, trimmed, session.token)
+      setComments((currentComments) => [...currentComments, comment])
       setCommentInput('')
-      setIsSubmitting(false)
       setTimeout(() => inputRef.current?.focus(), 50)
-    }, 150)
+    } catch (error) {
+      setComposerError(error instanceof Error ? error.message : 'Komentar gagal dikirim.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const content = (
@@ -125,7 +162,9 @@ export function PostDetailPage({ post, comments: initialComments, onClose }: Pos
           liked={liked}
           likeCount={likeCount}
           commentCount={comments.length}
+          shareCount={0}
           disableCommentFocus={isAtLimit}
+          isUpdatingLike={isUpdatingLike}
           onLike={handleLike}
           onCommentFocus={() => inputRef.current?.focus()}
         />
@@ -154,6 +193,7 @@ export function PostDetailPage({ post, comments: initialComments, onClose }: Pos
       </div>
 
       <CommentComposer
+        currentUser={currentUser}
         value={commentInput}
         isSubmitting={isSubmitting}
         isAtLimit={isAtLimit}
@@ -162,6 +202,11 @@ export function PostDetailPage({ post, comments: initialComments, onClose }: Pos
         onChange={setCommentInput}
         onSubmit={handleSubmitComment}
       />
+      {composerError ? (
+        <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-center text-sm font-medium text-red-700" role="alert">
+          {composerError}
+        </p>
+      ) : null}
     </div>
   )
 

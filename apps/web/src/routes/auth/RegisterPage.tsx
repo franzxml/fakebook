@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronLeft, CircleAlert, CircleHelp, Eye, EyeOff } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { register } from '@/services/api'
+import { GoogleAuthButton } from './components/GoogleAuthButton'
 
 const footerLinks = [
   'Daftar',
@@ -471,6 +472,7 @@ export function RegisterPage() {
             >
               Saya sudah punya akun
             </a>
+            <GoogleAuthButton mode="register" />
           </div>
         </form>
       </section>

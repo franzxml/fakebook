@@ -7,12 +7,12 @@ import { formatRelativeTime } from '../utils/feedTimeFormatters'
 type PostCardProps = {
   post: FeedPost
   onOpenDetail: () => void
+  onOpenComments: () => void
 }
 
-export function PostCard({ post, onOpenDetail }: PostCardProps) {
+export function PostCard({ post, onOpenDetail, onOpenComments }: PostCardProps) {
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post._count.likes)
-  const [showComments, setShowComments] = useState(false)
 
   function handleLike() {
     setLiked((currentLiked) => {
@@ -81,7 +81,7 @@ export function PostCard({ post, onOpenDetail }: PostCardProps) {
             <button
               onClick={(event) => {
                 event.stopPropagation()
-                setShowComments((value) => !value)
+                onOpenComments()
               }}
               className="ml-auto hover:underline"
             >
@@ -109,7 +109,7 @@ export function PostCard({ post, onOpenDetail }: PostCardProps) {
         <button
           onClick={(event) => {
             event.stopPropagation()
-            onOpenDetail()
+            onOpenComments()
           }}
           className="flex flex-1 items-center justify-center gap-2 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50"
         >
@@ -117,12 +117,6 @@ export function PostCard({ post, onOpenDetail }: PostCardProps) {
           Komentar
         </button>
       </div>
-
-      {showComments && (
-        <div className="border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
-          Buka detail postingan untuk melihat dan menambahkan komentar.
-        </div>
-      )}
     </article>
   )
 }

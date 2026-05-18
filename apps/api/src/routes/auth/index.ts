@@ -10,6 +10,52 @@ import {
 } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
 
+type GoogleTokenInfo = {
+  aud?: string
+  sub?: string
+  email?: string
+  email_verified?: string | boolean
+  name?: string
+  picture?: string
+}
+
+async function verifyGoogleCredential(credential: string) {
+  const googleClientId = process.env.GOOGLE_CLIENT_ID
+
+  if (!googleClientId) {
+    throw new Error('GOOGLE_CLIENT_ID belum dikonfigurasi.')
+  }
+
+  const response = await fetch(
+    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
+  )
+
+  if (!response.ok) {
+    throw new Error('Credential Google tidak valid.')
+  }
+
+  const payload = await response.json() as GoogleTokenInfo
+
+  if (payload.aud !== googleClientId) {
+    throw new Error('Credential Google tidak sesuai dengan aplikasi ini.')
+  }
+
+  if (payload.email_verified !== true && payload.email_verified !== 'true') {
+    throw new Error('Email Google belum terverifikasi.')
+  }
+
+  if (!payload.sub || !payload.email || !payload.name) {
+    throw new Error('Profil Google tidak lengkap.')
+  }
+
+  return {
+    providerAccountId: payload.sub,
+    email: normalizeEmail(payload.email),
+    name: payload.name.trim(),
+    avatarUrl: payload.picture || null,
+  }
+}
+
 export const authRoutes = new Elysia({ prefix: '/auth' })
   .post(
     '/register',
@@ -82,17 +128,25 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   .post(
     '/oauth/google',
     async ({ body, set }) => {
-      const email = normalizeEmail(body.email)
+      let googleProfile: Awaited<ReturnType<typeof verifyGoogleCredential>>
+
+      try {
+        googleProfile = await verifyGoogleCredential(body.credential)
+      } catch (error) {
+        set.status = 401
+        return errorPayload(error instanceof Error ? error.message : 'Login Google gagal.')
+      }
+
       const user = await prisma.user.upsert({
-        where: { email },
+        where: { email: googleProfile.email },
         update: {
-          name: body.name.trim(),
-          avatarUrl: body.avatarUrl,
+          name: googleProfile.name,
+          avatarUrl: googleProfile.avatarUrl,
         },
         create: {
-          name: body.name.trim(),
-          email,
-          avatarUrl: body.avatarUrl,
+          name: googleProfile.name,
+          email: googleProfile.email,
+          avatarUrl: googleProfile.avatarUrl,
         },
       })
 
@@ -100,7 +154,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         where: {
           provider_providerAccountId: {
             provider: 'google',
-            providerAccountId: body.providerAccountId,
+            providerAccountId: googleProfile.providerAccountId,
           },
         },
         update: {
@@ -109,7 +163,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         create: {
           userId: user.id,
           provider: 'google',
-          providerAccountId: body.providerAccountId,
+          providerAccountId: googleProfile.providerAccountId,
         },
       })
 
@@ -123,10 +177,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     },
     {
       body: t.Object({
-        name: t.String({ minLength: 1 }),
-        email: t.String({ minLength: 3 }),
-        avatarUrl: t.Optional(t.String()),
-        providerAccountId: t.String({ minLength: 1 }),
+        credential: t.String({ minLength: 1 }),
       }),
     },
   )

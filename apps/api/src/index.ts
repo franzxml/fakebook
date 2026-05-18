@@ -11,9 +11,16 @@ import { userRoutes } from './routes/users'
 
 const port = Number(process.env.PORT ?? 3000)
 const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173'
+const allowedCorsOrigins = corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean)
+const isAwsLambda = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME)
 
 const app = new Elysia()
-  .use(cors({ origin: corsOrigin }))
+
+if (!isAwsLambda) {
+  app.use(cors({ origin: allowedCorsOrigins }))
+}
+
+app
   .onError(({ code, error, set }) => {
     if (code === 'VALIDATION') {
       set.status = 400
