@@ -16,6 +16,7 @@ type HomePageProps = {
 export function HomePage({ posts, aside, currentUser }: HomePageProps) {
   const [feedPosts, setFeedPosts] = useState(posts)
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null)
+  const [shouldFocusComment, setShouldFocusComment] = useState(false)
   const [isLoadingFeed, setIsLoadingFeed] = useState(true)
   const [feedError, setFeedError] = useState<string | null>(null)
 
@@ -44,7 +45,12 @@ export function HomePage({ posts, aside, currentUser }: HomePageProps) {
   return (
     <AppLayout aside={aside} currentUser={currentUser} currentPath="/home">
       <div className="mx-auto max-w-xl space-y-4">
-        {currentUser && <CreatePostBox user={currentUser} />}
+        {currentUser && (
+          <CreatePostBox
+            user={currentUser}
+            onPostCreated={(post) => setFeedPosts((currentPosts) => [post, ...currentPosts])}
+          />
+        )}
 
         {isLoadingFeed ? (
           <div className="rounded-xl bg-white p-8 text-center shadow-sm">
@@ -63,7 +69,14 @@ export function HomePage({ posts, aside, currentUser }: HomePageProps) {
             <PostCard
               key={post.id}
               post={post}
-              onOpenDetail={() => setSelectedPost(post)}
+              onOpenDetail={() => {
+                setShouldFocusComment(false)
+                setSelectedPost(post)
+              }}
+              onOpenComments={() => {
+                setShouldFocusComment(true)
+                setSelectedPost(post)
+              }}
             />
           ))
         )}
@@ -74,6 +87,7 @@ export function HomePage({ posts, aside, currentUser }: HomePageProps) {
           key={selectedPost.id}
           post={selectedPost}
           comments={[]}
+          autoFocusComment={shouldFocusComment}
           onClose={() => setSelectedPost(null)}
         />
       )}

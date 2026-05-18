@@ -1,13 +1,13 @@
 import { formatCount } from '../utils/postDetailFormatters'
 import { CommentIcon, LikeIcon, ShareIcon } from './PostDetailIcons'
 
-const DEFAULT_SHARE_COUNT = 4
-
 type EngagementBarProps = {
   liked: boolean
   likeCount: number
   commentCount: number
+  shareCount?: number
   disableCommentFocus: boolean
+  isUpdatingLike?: boolean
   onLike: () => void
   onCommentFocus: () => void
 }
@@ -16,7 +16,9 @@ export function EngagementBar({
   liked,
   likeCount,
   commentCount,
+  shareCount = 0,
   disableCommentFocus,
+  isUpdatingLike = false,
   onLike,
   onCommentFocus,
 }: EngagementBarProps) {
@@ -26,7 +28,11 @@ export function EngagementBar({
       style={{ borderTop: '1px solid #DADDE1', borderBottom: '1px solid #DADDE1' }}
     >
       <div className="flex items-center gap-5">
-        <button onClick={onLike} className="flex items-center gap-1.5 py-0.5 hover:opacity-70 focus:outline-none">
+        <button
+          onClick={onLike}
+          disabled={isUpdatingLike}
+          className="flex items-center gap-1.5 py-0.5 hover:opacity-70 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        >
           <LikeIcon className="size-[20px]" filled={liked} style={{ color: liked ? '#1877F2' : '#65676B' }} />
           <span style={{ color: '#65676B', fontSize: '14px', fontWeight: 400 }}>{formatCount(likeCount)}</span>
         </button>
@@ -41,7 +47,7 @@ export function EngagementBar({
         <button className="flex items-center gap-1.5 py-0.5 hover:opacity-70 focus:outline-none">
           <ShareIcon className="size-[20px]" style={{ color: '#65676B' }} />
           <span style={{ color: '#65676B', fontSize: '14px', fontWeight: 400 }}>
-            {formatCount(DEFAULT_SHARE_COUNT)}
+            {formatCount(shareCount)}
           </span>
         </button>
       </div>

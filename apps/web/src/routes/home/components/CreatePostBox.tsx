@@ -1,22 +1,69 @@
 import { useState } from 'react'
-import { Image as ImageIcon, Send } from 'lucide-react'
+import { Image as ImageIcon, Send, X } from 'lucide-react'
 import type { PublicUser } from '@ppwl/shared'
 import { AvatarCircle } from '@/layouts/AppLayout'
+import { createPost, getStoredSession } from '@/services/api'
+import type { FeedPost } from '@/types/social'
 
-export function CreatePostBox({ user }: { user: PublicUser }) {
+const MAX_IMAGE_BYTES = 700 * 1024
+
+type CreatePostBoxProps = {
+  user: PublicUser
+  onPostCreated?: (post: FeedPost) => void
+}
+
+export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
   const [content, setContent] = useState('')
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleSubmit() {
+  function handleImageChange(file: File | undefined) {
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setError('File harus berupa gambar.')
+      return
+    }
+
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError('Ukuran gambar maksimal 700 KB untuk sementara.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setImagePreview(typeof reader.result === 'string' ? reader.result : null)
+      setError(null)
+    }
+    reader.onerror = () => setError('Gambar gagal dibaca.')
+    reader.readAsDataURL(file)
+  }
+
+  async function handleSubmit() {
     const trimmed = content.trim()
-    if (!trimmed || isSubmitting) return
-    setIsSubmitting(true)
+    if ((!trimmed && !imagePreview) || isSubmitting) return
 
-    // TODO: sambungkan ke createPost() dari api.ts
-    setTimeout(() => {
+    const session = getStoredSession()
+
+    if (!session?.token) {
+      setError('Sesi tidak ditemukan. Silakan login ulang.')
+      return
+    }
+
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      const post = await createPost(trimmed || ' ', session.token, imagePreview ? [imagePreview] : [])
       setContent('')
+      setImagePreview(null)
+      onPostCreated?.(post)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Postingan gagal dibuat.')
+    } finally {
       setIsSubmitting(false)
-    }, 500)
+    }
   }
 
   return (
@@ -32,21 +79,47 @@ export function CreatePostBox({ user }: { user: PublicUser }) {
         />
       </div>
 
+      {imagePreview ? (
+        <div className="relative mt-3 overflow-hidden rounded-xl border border-slate-100">
+          <img src={imagePreview} alt="Pratinjau gambar postingan" className="max-h-72 w-full object-cover" />
+          <button
+            type="button"
+            className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-slate-950/70 text-white transition hover:bg-slate-950"
+            aria-label="Hapus gambar"
+            onClick={() => setImagePreview(null)}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      ) : null}
+
       <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
-        <button className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100">
+        <label className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100">
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(event) => handleImageChange(event.target.files?.[0])}
+          />
           <ImageIcon size={18} className="text-green-500" />
           Foto
-        </button>
+        </label>
 
         <button
           onClick={handleSubmit}
-          disabled={!content.trim() || isSubmitting}
+          disabled={(!content.trim() && !imagePreview) || isSubmitting}
           className="flex items-center gap-2 rounded-lg bg-[#1877f2] px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#166fe5] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Send size={15} />
           {isSubmitting ? 'Mengirim...' : 'Kirim'}
         </button>
       </div>
+
+      {error ? (
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }

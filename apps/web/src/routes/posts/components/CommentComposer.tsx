@@ -1,8 +1,10 @@
 import type { RefObject } from 'react'
+import type { PublicUser } from '@/types/social'
 import { PostDetailAvatar } from './PostDetailAvatar'
 import { SendIcon } from './PostDetailIcons'
 
 type CommentComposerProps = {
+  currentUser: PublicUser | null
   value: string
   isSubmitting: boolean
   isAtLimit: boolean
@@ -13,6 +15,7 @@ type CommentComposerProps = {
 }
 
 export function CommentComposer({
+  currentUser,
   value,
   isSubmitting,
   isAtLimit,
@@ -21,10 +24,12 @@ export function CommentComposer({
   onChange,
   onSubmit,
 }: CommentComposerProps) {
+  const displayName = currentUser?.name ?? 'Pengguna'
+
   return (
     <div className="shrink-0 bg-white px-4 py-3" style={{ borderTop: '1px solid #DADDE1' }}>
       <div className="flex items-start gap-2">
-        <PostDetailAvatar name="Khairunnisa" size="sm" />
+        <PostDetailAvatar name={displayName} size="sm" />
 
         <div
           className="flex flex-1 flex-col rounded-[18px] px-3 py-2"
@@ -36,8 +41,8 @@ export function CommentComposer({
             value={value}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => event.key === 'Enter' && onSubmit()}
-            placeholder={isAtLimit ? `Batas ${maxComments} komentar tercapai` : 'Komentar sebagai Khairunnisa...'}
-            disabled={isAtLimit}
+            placeholder={isAtLimit ? `Batas ${maxComments} komentar tercapai` : `Komentar sebagai ${displayName}...`}
+            disabled={isAtLimit || !currentUser}
             className="w-full bg-transparent text-[14px] outline-none disabled:cursor-not-allowed"
             style={{ color: '#050505' }}
           />
