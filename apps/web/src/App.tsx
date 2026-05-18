@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { appMetadata, type ApiHealth } from '@ppwl/shared'
-import { apiBaseUrl } from '@/services/api'
+import { Toaster, toast } from 'sonner'
+import { apiBaseUrl, getStoredUser } from '@/services/api'
 import {
   HomePage,
   LoginPage,
@@ -110,12 +111,36 @@ function App() {
   const [health, setHealth] = useState<ApiHealth | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [pathname, setPathname] = useState(() => window.location.pathname)
+  const [currentUser, setCurrentUser] = useState<PublicUser | null>(() => getStoredUser() ?? demoUser)
 
   useEffect(() => {
-    const handleNavigation = () => setPathname(window.location.pathname)
+    const handleNavigation = () => {
+      setPathname(window.location.pathname)
+      setCurrentUser(getStoredUser() ?? demoUser)
+    }
+    const handleStorage = () => setCurrentUser(getStoredUser() ?? demoUser)
+
     window.addEventListener('popstate', handleNavigation)
-    return () => window.removeEventListener('popstate', handleNavigation)
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      window.removeEventListener('popstate', handleNavigation)
+      window.removeEventListener('storage', handleStorage)
+    }
   }, [])
+
+  useEffect(() => {
+    if (pathname !== '/home') return
+
+    const welcomeName = window.sessionStorage.getItem('ppwl-welcome-toast')
+
+    if (!welcomeName) return
+
+    window.sessionStorage.removeItem('ppwl-welcome-toast')
+    toast.success(`Selamat datang, ${welcomeName}`, {
+      description: 'Login berhasil. Notifikasi dan beranda sudah tersambung ke backend.',
+    })
+  }, [pathname])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -147,42 +172,38 @@ function App() {
 
   // ===== ROUTING =====
 
+  let page: React.ReactNode
+
   if (pathname === '/' || pathname === '/auth' || pathname === '/login') {
-    return <LoginPage />
-  }
-
-  if (pathname === '/auth/register' || pathname === '/register') {
-    return <RegisterPage />
-  }
-
-  // Beranda tetap bisa diakses lewat '/home'.
-  if (pathname === '/home') {
-    return (
+    page = <LoginPage />
+  } else if (pathname === '/auth/register' || pathname === '/register') {
+    page = <RegisterPage />
+  } else if (pathname === '/home') {
+    page = (
       <HomePage
         posts={demoPosts}
         aside={aside}
-        currentUser={demoUser}
+        currentUser={currentUser}
       />
     )
+  } else if (pathname.startsWith('/posts/')) {
+    page = <PostDetailPage post={demoPosts[0]} comments={demoComments} />
+  } else if (pathname === '/notifications') {
+    page = <NotificationsPage notifications={demoNotifications} />
+  } else if (pathname === '/profile') {
+    page = <ProfilePage />
+  } else if (pathname === '/users') {
+    page = <UsersPage users={demoUsers} />
+  } else {
+    page = <NotFoundPage />
   }
 
-  if (pathname.startsWith('/posts/')) {
-    return <PostDetailPage post={demoPosts[0]} comments={demoComments} />
-  }
-
-  if (pathname === '/notifications') {
-    return <NotificationsPage notifications={demoNotifications} />
-  }
-
-  if (pathname === '/profile') {
-    return <ProfilePage />
-  }
-
-  if (pathname === '/users') {
-    return <UsersPage users={demoUsers} />
-  }
-
-  return <NotFoundPage />
+  return (
+    <>
+      {page}
+      <Toaster richColors position="top-right" />
+    </>
+  )
 }
 
 function NotFoundPage() {

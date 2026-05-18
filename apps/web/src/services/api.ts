@@ -1,4 +1,6 @@
-import type { FeedPost } from '@ppwl/shared'
+import type { AuthResponse, FeedPost, PublicUser, SessionPayload } from '@ppwl/shared'
+import type { NotificationsResponse } from '@ppwl/shared'
+import type { PostComment } from '@/types/social'
 
 export type FeedResponse = {
   posts: FeedPost[]
@@ -10,12 +12,27 @@ export type FeedResponse = {
   }
 }
 
+export type PostCommentsResponse = {
+  comments: PostComment[]
+}
+
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   token?: string
   body?: unknown
+}
+
+type LoginInput = {
+  email: string
+  password: string
+}
+
+type RegisterInput = {
+  name: string
+  email: string
+  password: string
 }
 
 export async function apiRequest<TResponse>(path: string, options: RequestOptions = {}) {
@@ -36,19 +53,73 @@ export async function apiRequest<TResponse>(path: string, options: RequestOption
   })
 
   if (!response.ok) {
-    throw new Error('Request API gagal.')
+    const payload = await response.json().catch(() => null)
+    const message = payload && typeof payload === 'object' && 'error' in payload
+      ? String(payload.error)
+      : 'Request API gagal.'
+
+    throw new Error(message)
   }
 
   return response.json() as Promise<TResponse>
 }
 
+export function saveAuthSession(auth: AuthResponse) {
+  localStorage.setItem('session', JSON.stringify(auth.session))
+  localStorage.setItem('user', JSON.stringify(auth.user))
+}
+
+export function getStoredSession(): SessionPayload | null {
+  try {
+    const rawSession = localStorage.getItem('session')
+    return rawSession ? JSON.parse(rawSession) as SessionPayload : null
+  } catch {
+    return null
+  }
+}
+
+export function getStoredUser(): PublicUser | null {
+  try {
+    const rawUser = localStorage.getItem('user')
+    return rawUser ? JSON.parse(rawUser) as PublicUser : null
+  } catch {
+    return null
+  }
+}
+
+export async function login(input: LoginInput) {
+  const auth = await apiRequest<AuthResponse>('/auth/login', {
+    method: 'POST',
+    body: input,
+  })
+
+  saveAuthSession(auth)
+  return auth
+}
+
+export async function register(input: RegisterInput) {
+  const auth = await apiRequest<AuthResponse>('/auth/register', {
+    method: 'POST',
+    body: input,
+  })
+
+  saveAuthSession(auth)
+  return auth
+}
+
 /* Ambil daftar postingan untuk feed */
 export async function fetchFeed(page = 1, limit = 10): Promise<FeedResponse> {
-  const res = await fetch(
-    `${apiBaseUrl}/posts/feed?page=${page}&limit=${limit}`,
-  )
-  if (!res.ok) throw new Error('Gagal mengambil feed')
-  return res.json() as Promise<FeedResponse>
+  return apiRequest<FeedResponse>(`/posts/feed?page=${page}&limit=${limit}`)
+}
+
+/* Ambil komentar postingan untuk modal/detail postingan */
+export async function fetchPostComments(postId: string): Promise<PostCommentsResponse> {
+  return apiRequest<PostCommentsResponse>(`/posts/${postId}/comments`)
+}
+
+/* Ambil notifikasi dummy dari backend untuk halaman list notifikasi */
+export async function fetchNotificationFeed(): Promise<NotificationsResponse> {
+  return apiRequest<NotificationsResponse>('/notifications/feed')
 }
 
 /* Buat postingan baru */

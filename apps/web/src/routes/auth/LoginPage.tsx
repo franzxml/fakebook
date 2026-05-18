@@ -1,5 +1,6 @@
 import { CircleAlert, Eye, EyeOff } from 'lucide-react'
 import { useState } from 'react'
+import { login } from '@/services/api'
 
 const footerLinks = [
   'Daftar',
@@ -166,9 +167,12 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isSplashVisible, setIsSplashVisible] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('Informasi login yang Anda masukkan salah.')
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (isSubmitting) return
 
     const formData = new FormData(event.currentTarget)
     const email = String(formData.get('email') ?? '').trim()
@@ -179,12 +183,24 @@ export function LoginPage() {
     setLoginError(Boolean(!hasEmailError && !password))
 
     if (!hasEmailError && password) {
-      setIsSplashVisible(true)
+      setIsSubmitting(true)
+      setLoginError(false)
 
-      window.setTimeout(() => {
-        window.history.pushState({}, '', '/home')
-        window.dispatchEvent(new PopStateEvent('popstate'))
-      }, 1600)
+      try {
+        const auth = await login({ email, password })
+        window.sessionStorage.setItem('ppwl-welcome-toast', auth.user.name)
+        setIsSplashVisible(true)
+
+        window.setTimeout(() => {
+          window.history.pushState({}, '', '/home')
+          window.dispatchEvent(new PopStateEvent('popstate'))
+        }, 900)
+      } catch (error) {
+        setLoginError(true)
+        setErrorMessage(error instanceof Error ? error.message : 'Informasi login yang Anda masukkan salah.')
+      } finally {
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -243,7 +259,7 @@ export function LoginPage() {
                   >
                     <CircleAlert className="mt-1 size-6 shrink-0 text-[#e41e3f]" aria-hidden="true" strokeWidth={2.2} />
                     <p>
-                      Informasi login yang Anda masukkan salah.{' '}
+                      {errorMessage}{' '}
                       <span className="font-bold text-[#0866e8]">
                         Cari akun Anda dan login.
                       </span>
@@ -290,9 +306,10 @@ export function LoginPage() {
 
               <button
                 type="submit"
-                className="mt-6 h-11 w-full rounded-full bg-[#0866e8] px-6 text-base font-semibold text-white transition hover:bg-[#075bce] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1877f2]/25"
+                disabled={isSubmitting}
+                className="mt-6 h-11 w-full rounded-full bg-[#0866e8] px-6 text-base font-semibold text-white transition hover:bg-[#075bce] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1877f2]/25"
               >
-                Login
+                {isSubmitting ? 'Memproses...' : 'Login'}
               </button>
 
               <button

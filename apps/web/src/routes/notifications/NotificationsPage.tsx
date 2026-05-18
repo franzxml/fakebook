@@ -2,12 +2,11 @@ import { Bell, Check, CheckCheck, MessageCircle, ThumbsUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/layouts/AppLayout'
-import { apiRequest } from '@/services/api'
+import { apiRequest, fetchNotificationFeed, getStoredSession } from '@/services/api'
 import type { AppNotification } from '@/types/social'
 import type {
   MarkNotificationsReadResponse,
   NotificationResponse,
-  NotificationsResponse,
 } from '@ppwl/shared'
 
 type NotificationsPageProps = {
@@ -20,6 +19,12 @@ const fallbackTokenKeys = ['ppwl-session-token', 'ppwl-auth-token', 'sessionToke
 function getStoredToken() {
   if (typeof window === 'undefined') {
     return null
+  }
+
+  const session = getStoredSession()
+
+  if (session?.token) {
+    return session.token
   }
 
   for (const key of fallbackTokenKeys) {
@@ -62,7 +67,7 @@ function getNotificationIcon(notification: AppNotification) {
 export function NotificationsPage({ notifications, token }: NotificationsPageProps) {
   const authToken = token ?? getStoredToken()
   const [items, setItems] = useState(() => notifications)
-  const [isLoading, setIsLoading] = useState(Boolean(authToken))
+  const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const unreadCount = useMemo(
@@ -71,16 +76,13 @@ export function NotificationsPage({ notifications, token }: NotificationsPagePro
   )
 
   useEffect(() => {
-    if (!authToken) {
-      return
-    }
-
     let isActive = true
 
-    apiRequest<NotificationsResponse>('/notifications', { token: authToken })
+    fetchNotificationFeed()
       .then((response) => {
         if (isActive) {
-          setItems(response.notifications)
+          setItems(response.notifications.length ? response.notifications : notifications)
+          setError(null)
         }
       })
       .catch(() => {
@@ -98,7 +100,7 @@ export function NotificationsPage({ notifications, token }: NotificationsPagePro
     return () => {
       isActive = false
     }
-  }, [authToken, notifications])
+  }, [notifications])
 
   async function markAsRead(notificationId: string) {
     setError(null)
