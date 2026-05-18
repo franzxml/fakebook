@@ -1,0 +1,27 @@
+FROM oven/bun:1 AS deps
+WORKDIR /app
+
+COPY package.json bun.lock tsconfig.base.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/shared/package.json packages/shared/package.json
+RUN bun install --frozen-lockfile
+
+FROM oven/bun:1 AS runner
+WORKDIR /app
+
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.1 /lambda-adapter /opt/extensions/lambda-adapter
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json bun.lock tsconfig.base.json ./
+COPY apps/api ./apps/api
+COPY packages/shared ./packages/shared
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV AWS_LWA_PORT=3000
+ENV AWS_LWA_READINESS_CHECK_PATH=/health
+
+RUN bun --cwd apps/api prisma generate
+
+WORKDIR /app/apps/api
+CMD ["bun", "run", "start"]
