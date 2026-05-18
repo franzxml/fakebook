@@ -60,11 +60,13 @@ function StatBadge({ label, value }: { label: string; value: number }) {
 }
 
 export function ProfilePage() {
-  const token = getToken()
+  const [token] = useState(getToken)
 
   const [profile, setProfile] = useState<ProfileResponse['profile'] | null>(null)
-  const [loadingProfile, setLoadingProfile] = useState(true)
-  const [errorProfile, setErrorProfile] = useState<string | null>(null)
+  const [loadingProfile, setLoadingProfile] = useState(Boolean(token))
+  const [errorProfile, setErrorProfile] = useState<string | null>(
+    token ? null : 'Sesi tidak ditemukan. Silakan login ulang.',
+  )
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -80,11 +82,7 @@ export function ProfilePage() {
   const [passwordMsg, setPasswordMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
-    if (!token) {
-      setErrorProfile('Sesi tidak ditemukan. Silakan login ulang.')
-      setLoadingProfile(false)
-      return
-    }
+    if (!token) return
 
     apiRequest<ProfileResponse>('/profile', { token })
       .then((res) => {
@@ -95,7 +93,7 @@ export function ProfilePage() {
       })
       .catch(() => setErrorProfile('Gagal memuat profil. Coba refresh halaman.'))
       .finally(() => setLoadingProfile(false))
-  }, [])
+  }, [token])
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault()

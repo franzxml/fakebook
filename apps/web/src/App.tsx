@@ -147,7 +147,7 @@ function App() {
 
   // ===== ROUTING =====
 
-  if (pathname === '/auth' || pathname === '/login') {
+  if (pathname === '/' || pathname === '/auth' || pathname === '/login') {
     return <LoginPage />
   }
 
@@ -155,8 +155,8 @@ function App() {
     return <RegisterPage />
   }
 
-  // Beranda — '/' dan '/home' keduanya menuju HomePage
-  if (pathname === '/' || pathname === '/home') {
+  // Beranda tetap bisa diakses lewat '/home'.
+  if (pathname === '/home') {
     return (
       <HomePage
         posts={demoPosts}
@@ -175,7 +175,7 @@ function App() {
   }
 
   if (pathname === '/profile') {
-    return <ProfilePage user={demoUser} />
+    return <ProfilePage />
   }
 
   if (pathname === '/users') {
