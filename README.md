@@ -51,11 +51,13 @@ Proyek ini menggunakan struktur monorepo agar frontend, backend, dan tipe data b
     │   ├── api/
     │   │   ├── prisma/
     │   │   │   ├── migrations/
+    │   │   │   ├── dev.db
     │   │   │   ├── schema.prisma
     │   │   │   └── seed-home-feed.sql
     │   │   ├── src/
     │   │   │   ├── db/
     │   │   │   │   └── prisma.ts
+    │   │   │   ├── generated/
     │   │   │   ├── http/
     │   │   │   │   ├── auth.ts
     │   │   │   │   └── errors.ts
@@ -69,9 +71,11 @@ Proyek ini menggunakan struktur monorepo agar frontend, backend, dan tipe data b
     │   │   │   └── index.ts
     │   │   ├── Dockerfile.lambda
     │   │   ├── package.json
+    │   │   ├── tsconfig.json
     │   │   └── prisma.config.ts
     │   └── web/
     │       ├── public/
+    │       │   ├── picture/
     │       │   └── favicon.svg
     │       ├── src/
     │       │   ├── components/
@@ -98,17 +102,21 @@ Proyek ini menggunakan struktur monorepo agar frontend, backend, dan tipe data b
     │       │   ├── App.tsx
     │       │   ├── index.css
     │       │   └── main.tsx
+    │       ├── components.json
+    │       ├── eslint.config.js
     │       ├── index.html
-    │       └── package.json
+    │       ├── package.json
+    │       ├── tsconfig.app.json
+    │       ├── tsconfig.json
+    │       ├── tsconfig.node.json
+    │       └── vite.config.ts
     │── packages/
     │   └── shared/
     │       ├── src/
     │       │   └── index.ts
+    │       ├── tsconfig.json
     │       └── package.json
-    │── docs/
-    │   └── pembagian-tugas-file-projek.pdf
-    │── scripts/
-    │   └── generate-task-files-pdf.mjs
+    │── .dockerignore
     │── .gitignore
     │── bun.lock
     │── package.json
@@ -233,5 +241,5 @@ Dikembangkan oleh:
 * @franzxml
 * @h1101241039-cmd
 * @ghinaaa09
-* arifquuu
-* isanctuarry
+* @arifquuu
+* @isanctuarry
