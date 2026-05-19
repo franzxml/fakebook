@@ -44,7 +44,8 @@ type RegisterInput = {
 }
 
 type GoogleOAuthInput = {
-  credential: string
+  credential?: string
+  accessToken?: string
 }
 
 export async function apiRequest<TResponse>(path: string, options: RequestOptions = {}) {
