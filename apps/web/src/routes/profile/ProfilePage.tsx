@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Camera, Check, Eye, EyeOff, KeyRound, Loader2, Save, User } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { AppLayout } from '@/layouts/AppLayout'
-import { apiRequest } from '@/services/api'
+import { Camera, Check, Eye, EyeOff, KeyRound, Loader2, Mail, Save, Shield, User } from 'lucide-react'
+import { apiRequest, getStoredUser } from '@/services/api'
+import { navigate, notifyAuthStorageChanged } from '@/lib/navigation'
 import type { PublicUser } from '@/types/social'
 
 type ProfileResponse = {
@@ -33,34 +32,75 @@ function getToken(): string | null {
   }
 }
 
-function ProfileAvatar({ avatarUrl, name }: { avatarUrl: string | null; name: string }) {
+function AvatarPreview({ avatarUrl, name, size = 'h-32 w-32' }: { avatarUrl: string | null; name: string; size?: string }) {
   if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt={name}
-        className="size-20 rounded-full object-cover ring-2 ring-blue-100"
-      />
-    )
+    return <img src={avatarUrl} alt={name} className={`${size} rounded-full object-cover ring-4 ring-white`} />
   }
+
   return (
-    <div className="flex size-20 items-center justify-center rounded-full bg-blue-100 text-2xl font-semibold text-blue-700 ring-2 ring-blue-200">
+    <div className={`${size} flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-sky-300 text-4xl font-bold text-white ring-4 ring-white`}>
       {name.charAt(0).toUpperCase()}
     </div>
   )
 }
 
-function StatBadge({ label, value }: { label: string; value: number }) {
+function Field({
+  label,
+  icon,
+  children,
+}: {
+  label: string
+  icon: React.ReactNode
+  children: React.ReactNode
+}) {
   return (
-    <div className="flex flex-col items-center rounded-lg bg-slate-50 px-4 py-3">
-      <span className="text-lg font-semibold text-slate-950">{value}</span>
-      <span className="text-xs text-slate-500">{label}</span>
-    </div>
+    <label className="block">
+      <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
+        {icon}
+        {label}
+      </span>
+      {children}
+    </label>
+  )
+}
+
+function StatusMessage({ message }: { message: { ok: boolean; text: string } | null }) {
+  if (!message) return null
+
+  return (
+    <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${message.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+      {message.ok ? <Check className="mr-1 inline h-4 w-4" /> : null}
+      {message.text}
+    </p>
+  )
+}
+
+function Topbar({ currentUser }: { currentUser: PublicUser | null }) {
+  return (
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
+      <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4">
+        <button
+          type="button"
+          onClick={() => navigate('/home')}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-3xl font-black text-white"
+        >
+          f
+        </button>
+        <button
+          type="button"
+          className="rounded-full bg-gray-100 p-1 hover:bg-gray-200"
+          aria-label="Profil"
+        >
+          <AvatarPreview avatarUrl={currentUser?.avatarUrl ?? null} name={currentUser?.name ?? 'Facebook'} size="h-9 w-9" />
+        </button>
+      </div>
+    </header>
   )
 }
 
 export function ProfilePage() {
   const [token] = useState(getToken)
+  const [storedUser, setStoredUser] = useState<PublicUser | null>(() => getStoredUser())
 
   const [profile, setProfile] = useState<ProfileResponse['profile'] | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(Boolean(token))
@@ -90,6 +130,7 @@ export function ProfilePage() {
         setName(res.profile.name)
         setEmail(res.profile.email)
         setAvatarUrl(res.profile.avatarUrl ?? '')
+        setStoredUser(res.profile)
       })
       .catch(() => setErrorProfile('Gagal memuat profil. Coba refresh halaman.'))
       .finally(() => setLoadingProfile(false))
@@ -112,7 +153,11 @@ export function ProfilePage() {
           avatarUrl: avatarUrl !== (profile.avatarUrl ?? '') ? avatarUrl || null : undefined,
         },
       })
-      setProfile((prev) => (prev ? { ...prev, ...res.user } : prev))
+      const nextProfile = { ...profile, ...res.user }
+      setProfile(nextProfile)
+      setStoredUser(res.user)
+      localStorage.setItem('user', JSON.stringify(res.user))
+      notifyAuthStorageChanged()
       setProfileMsg({ ok: true, text: 'Profil berhasil diperbarui.' })
     } catch {
       setProfileMsg({ ok: false, text: 'Gagal memperbarui profil. Coba lagi.' })
@@ -146,166 +191,197 @@ export function ProfilePage() {
 
   if (loadingProfile) {
     return (
-      <AppLayout>
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="size-6 animate-spin text-blue-500" />
-        </div>
-      </AppLayout>
+      <div className="grid min-h-screen place-items-center bg-[#f0f2f5]">
+        <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+      </div>
     )
   }
 
   if (errorProfile || !profile) {
     return (
-      <AppLayout>
-        <div className="rounded-lg border border-red-100 bg-red-50 p-5 text-sm text-red-600">
+      <div className="min-h-screen bg-[#f0f2f5] pt-20">
+        <main className="mx-auto max-w-xl rounded-xl bg-white p-5 text-sm font-semibold text-red-700 shadow-sm">
           {errorProfile ?? 'Profil tidak ditemukan.'}
-        </div>
-      </AppLayout>
+        </main>
+      </div>
     )
   }
 
-  return (
-    <AppLayout>
-      <div className="space-y-4">
+  const previewAvatar = avatarUrl || null
 
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <ProfileAvatar avatarUrl={profile.avatarUrl} name={profile.name} />
-            <div>
-              <h1 className="text-xl font-semibold text-slate-950">{profile.name}</h1>
-              <p className="text-sm text-slate-500">{profile.email}</p>
+  return (
+    <div className="min-h-screen bg-[#f0f2f5] text-gray-950">
+      <Topbar currentUser={storedUser ?? profile} />
+
+      <main className="mx-auto max-w-[980px] px-4 pb-12 pt-14">
+        <section className="overflow-hidden rounded-b-xl bg-white shadow-sm">
+          <div className="h-56 bg-gradient-to-br from-gray-300 via-gray-200 to-blue-200" />
+          <div className="px-6 pb-5">
+            <div className="-mt-16 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end">
+                <div className="relative">
+                  <AvatarPreview avatarUrl={profile.avatarUrl} name={profile.name} />
+                  <button className="absolute bottom-2 right-2 grid h-10 w-10 place-items-center rounded-full bg-gray-200 text-gray-800 shadow hover:bg-gray-300">
+                    <Camera size={20} />
+                  </button>
+                </div>
+                <div className="pb-2">
+                  <h1 className="text-3xl font-bold tracking-tight">{profile.name}</h1>
+                  <p className="mt-1 text-sm font-medium text-gray-500">{profile.email}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => document.getElementById('edit-profile-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="mb-2 rounded-md bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-700"
+              >
+                Edit profil
+              </button>
+            </div>
+
+            <div className="mt-5 grid grid-cols-3 border-t border-gray-200 pt-4 text-center">
+              <div>
+                <p className="text-xl font-bold">{profile._count.posts}</p>
+                <p className="text-sm font-semibold text-gray-500">Postingan</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold">{profile._count.comments}</p>
+                <p className="text-sm font-semibold text-gray-500">Komentar</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold">{profile._count.likes}</p>
+                <p className="text-sm font-semibold text-gray-500">Suka</p>
+              </div>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <StatBadge label="Postingan" value={profile._count.posts} />
-            <StatBadge label="Komentar" value={profile._count.comments} />
-            <StatBadge label="Likes" value={profile._count.likes} />
-          </div>
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <User className="size-4 text-slate-400" />
-            <h2 className="font-semibold text-slate-950">Edit Profil</h2>
-          </div>
-          <form onSubmit={handleSaveProfile} className="space-y-4">
-            <label className="block text-sm font-medium text-slate-700">
-              Avatar URL
-              <div className="mt-2 flex gap-2">
-                <input
-                  type="url"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="https://example.com/foto.jpg"
-                  className="h-10 flex-1 rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-                <Button variant="secondary" type="button" aria-label="Preview avatar">
-                  <Camera className="size-4" aria-hidden="true" />
-                </Button>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+          <aside className="space-y-4">
+            <section className="rounded-xl bg-white p-5 shadow-sm">
+              <h2 className="text-xl font-bold">Intro</h2>
+              <div className="mt-4 space-y-3 text-sm text-gray-700">
+                <p className="flex items-center gap-2"><User size={18} className="text-gray-500" /> {profile.name}</p>
+                <p className="flex items-center gap-2"><Mail size={18} className="text-gray-500" /> {profile.email}</p>
+                <p className="flex items-center gap-2"><Shield size={18} className="text-gray-500" /> Akun aktif</p>
               </div>
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              Nama
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                minLength={1}
-                required
-                className="mt-2 h-10 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              Email
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                minLength={3}
-                required
-                className="mt-2 h-10 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
-            </label>
-            {profileMsg && (
-              <p className={`text-sm ${profileMsg.ok ? 'text-green-600' : 'text-red-600'}`}>
-                {profileMsg.text}
-              </p>
-            )}
-            <Button type="submit" disabled={savingProfile} className="gap-2">
-              {savingProfile
-                ? <Loader2 className="size-4 animate-spin" />
-                : <Save className="size-4" aria-hidden="true" />
-              }
-              Simpan Perubahan
-            </Button>
-          </form>
-        </section>
+            </section>
+          </aside>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <KeyRound className="size-4 text-slate-400" />
-            <h2 className="font-semibold text-slate-950">Ganti Password</h2>
-          </div>
-          <form onSubmit={handleSavePassword} className="space-y-4">
-            <label className="block text-sm font-medium text-slate-700">
-              Password Saat Ini
-              <div className="relative mt-2">
-                <input
-                  type={showCurrent ? 'text' : 'password'}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required
-                  className="h-10 w-full rounded-md border border-slate-200 px-3 pr-10 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
+          <div className="space-y-4">
+            <section className="rounded-xl bg-white p-5 shadow-sm" id="edit-profile-form">
+              <h2 className="text-xl font-bold">Edit profil</h2>
+              <p className="mt-1 text-sm text-gray-500">Ubah nama, foto profil, dan email akun.</p>
+
+              <form onSubmit={handleSaveProfile} className="mt-5 space-y-4">
+                <div className="flex items-center gap-4 rounded-xl bg-gray-50 p-4">
+                  <AvatarPreview avatarUrl={previewAvatar} name={name || profile.name} size="h-20 w-20" />
+                  <Field label="Avatar URL" icon={<Camera size={16} />}>
+                    <input
+                      type="url"
+                      value={avatarUrl}
+                      onChange={(e) => setAvatarUrl(e.target.value)}
+                      placeholder="https://example.com/foto.jpg"
+                      className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Nama" icon={<User size={16} />}>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    minLength={1}
+                    required
+                    className="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </Field>
+
+                <Field label="Email" icon={<Mail size={16} />}>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    minLength={3}
+                    required
+                    className="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </Field>
+
+                <StatusMessage message={profileMsg} />
+
                 <button
-                  type="button"
-                  onClick={() => setShowCurrent((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  aria-label={showCurrent ? 'Sembunyikan password' : 'Tampilkan password'}
+                  type="submit"
+                  disabled={savingProfile}
+                  className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {showCurrent ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Simpan perubahan
                 </button>
-              </div>
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              Password Baru
-              <div className="relative mt-2">
-                <input
-                  type={showNew ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="h-10 w-full rounded-md border border-slate-200 px-3 pr-10 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNew((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  aria-label={showNew ? 'Sembunyikan password' : 'Tampilkan password'}
-                >
-                  {showNew ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
-              </div>
-              <p className="mt-1 text-xs text-slate-400">Minimal 6 karakter</p>
-            </label>
-            {passwordMsg && (
-              <p className={`flex items-center gap-1 text-sm ${passwordMsg.ok ? 'text-green-600' : 'text-red-600'}`}>
-                {passwordMsg.ok && <Check className="size-3" />}
-                {passwordMsg.text}
-              </p>
-            )}
-            <Button type="submit" disabled={savingPassword} className="gap-2">
-              {savingPassword
-                ? <Loader2 className="size-4 animate-spin" />
-                : <KeyRound className="size-4" aria-hidden="true" />
-              }
-              Perbarui Password
-            </Button>
-          </form>
-        </section>
+              </form>
+            </section>
 
-      </div>
-    </AppLayout>
+            <section className="rounded-xl bg-white p-5 shadow-sm">
+              <h2 className="text-xl font-bold">Keamanan dan login</h2>
+              <p className="mt-1 text-sm text-gray-500">Ganti password akun manual Anda.</p>
+
+              <form onSubmit={handleSavePassword} className="mt-5 space-y-4">
+                <Field label="Password saat ini" icon={<KeyRound size={16} />}>
+                  <div className="relative">
+                    <input
+                      type={showCurrent ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      required
+                      className="h-11 w-full rounded-lg border border-gray-300 px-3 pr-11 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrent((value) => !value)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800"
+                    >
+                      {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </Field>
+
+                <Field label="Password baru" icon={<KeyRound size={16} />}>
+                  <div className="relative">
+                    <input
+                      type={showNew ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="h-11 w-full rounded-lg border border-gray-300 px-3 pr-11 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNew((value) => !value)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800"
+                    >
+                      {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs font-medium text-gray-500">Minimal 6 karakter</p>
+                </Field>
+
+                <StatusMessage message={passwordMsg} />
+
+                <button
+                  type="submit"
+                  disabled={savingPassword}
+                  className="inline-flex items-center gap-2 rounded-md bg-gray-200 px-5 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                  Perbarui password
+                </button>
+              </form>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
   )
 }

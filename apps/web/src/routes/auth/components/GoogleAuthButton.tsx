@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CircleAlert } from 'lucide-react'
 import { loginWithGoogle } from '@/services/api'
+import { navigate } from '@/lib/navigation'
 
 const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim()
 
@@ -56,8 +57,7 @@ function GoogleIcon() {
 
 function navigateHome(userName: string) {
   window.sessionStorage.setItem('ppwl-welcome-toast', userName)
-  window.history.pushState({}, '', '/home')
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  navigate('/home')
 }
 
 function loadGoogleIdentityScript() {

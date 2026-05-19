@@ -1,17 +1,13 @@
 import type { ReactNode } from 'react'
 import { Home, Bell, Users, User, LogOut } from 'lucide-react'
 import type { PublicUser } from '@ppwl/shared'
+import { navigate } from '@/lib/navigation'
 
 type AppLayoutProps = {
   children: ReactNode
   aside?: ReactNode
   currentUser?: PublicUser | null
   currentPath?: string
-}
-
-function navigate(path: string) {
-  window.history.pushState({}, '', path)
-  window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
 type NavItem = {
@@ -28,11 +24,9 @@ const navItems: NavItem[] = [
 ]
 
 export function AppLayout({ children, aside, currentUser, currentPath = '' }: AppLayoutProps) {
-  // Mengambil title secara dinamis dari <title> yang ada di apps/web/index.html
-  // Jika di index.html tertulis "PPWL Clone Facebook", maka otomatis terambil teks tersebut.
+  // Mengambil title secara dinamis dari <title> yang ada di apps/web/index.html.
   const siteTitle = typeof document !== 'undefined' ? document.title : 'Facebook'
   
-  // Opsional: Jika ingin logonya hanya menampilkan kata terakhir (ex: "facebook") dari "PPWL Clone Facebook"
   const logoText = siteTitle.split(' ').pop()?.toLowerCase() || 'facebook'
 
   return (

@@ -20,11 +20,26 @@ export type CreatePostResponse = {
   post: FeedPost
 }
 
+export type UpdatePostResponse = {
+  post: FeedPost
+}
+
 export type CreateCommentResponse = {
   comment: PostComment
 }
 
-const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+const defaultLocalApiUrl = 'http://localhost:3000'
+const productionApiUrl = 'https://2gtrnedjhmootg6bu5e24kwdmq0oyuns.lambda-url.us-east-1.on.aws'
+const configuredApiUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim()
+const isLocalBrowser = typeof window !== 'undefined'
+  ? ['localhost', '127.0.0.1'].includes(window.location.hostname)
+  : true
+
+const apiBaseUrl = configuredApiUrl && (isLocalBrowser || configuredApiUrl !== defaultLocalApiUrl)
+  ? configuredApiUrl
+  : isLocalBrowser
+    ? defaultLocalApiUrl
+    : productionApiUrl
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
@@ -46,6 +61,17 @@ type RegisterInput = {
 type GoogleOAuthInput = {
   credential?: string
   accessToken?: string
+}
+
+type ForgotPasswordResponse = {
+  success: true
+  resetToken?: string
+  message: string
+}
+
+type ResetPasswordResponse = {
+  success: true
+  message: string
 }
 
 export async function apiRequest<TResponse>(path: string, options: RequestOptions = {}) {
@@ -100,6 +126,11 @@ export function getStoredUser(): PublicUser | null {
   }
 }
 
+export function clearAuthSession() {
+  localStorage.removeItem('session')
+  localStorage.removeItem('user')
+}
+
 export async function login(input: LoginInput) {
   const auth = await apiRequest<AuthResponse>('/auth/login', {
     method: 'POST',
@@ -108,6 +139,15 @@ export async function login(input: LoginInput) {
 
   saveAuthSession(auth)
   return auth
+}
+
+export async function logout(token?: string) {
+  if (!token) return { success: true }
+
+  return apiRequest<{ success: true }>('/auth/logout', {
+    method: 'POST',
+    token,
+  })
 }
 
 export async function register(input: RegisterInput) {
@@ -130,6 +170,20 @@ export async function loginWithGoogle(input: GoogleOAuthInput) {
   return auth
 }
 
+export async function requestPasswordReset(email: string) {
+  return apiRequest<ForgotPasswordResponse>('/auth/password/forgot', {
+    method: 'POST',
+    body: { email },
+  })
+}
+
+export async function resetPassword(token: string, password: string) {
+  return apiRequest<ResetPasswordResponse>('/auth/password/reset', {
+    method: 'POST',
+    body: { token, password },
+  })
+}
+
 /* Ambil daftar postingan untuk feed */
 export async function fetchFeed(page = 1, limit = 10): Promise<FeedResponse> {
   return apiRequest<FeedResponse>(`/posts/feed?page=${page}&limit=${limit}`)
@@ -150,6 +204,23 @@ export async function createPostComment(postId: string, content: string, token: 
   return response.comment
 }
 
+export async function updateComment(commentId: string, content: string, token: string): Promise<PostComment> {
+  const response = await apiRequest<{ comment: PostComment }>(`/comments/${commentId}`, {
+    method: 'PATCH',
+    token,
+    body: { content },
+  })
+
+  return response.comment
+}
+
+export async function deleteComment(commentId: string, token: string) {
+  return apiRequest<{ success: true }>(`/comments/${commentId}`, {
+    method: 'DELETE',
+    token,
+  })
+}
+
 export async function likePost(postId: string, token: string) {
   return apiRequest<{ like: unknown }>(`/posts/${postId}/likes`, {
     method: 'POST',
@@ -164,9 +235,13 @@ export async function unlikePost(postId: string, token: string) {
   })
 }
 
-/* Ambil notifikasi dummy dari backend untuk halaman list notifikasi */
+/* Ambil notifikasi dari backend untuk halaman list notifikasi */
 export async function fetchNotificationFeed(): Promise<NotificationsResponse> {
   return apiRequest<NotificationsResponse>('/notifications/feed')
+}
+
+export async function fetchNotifications(token: string): Promise<NotificationsResponse> {
+  return apiRequest<NotificationsResponse>('/notifications', { token })
 }
 
 /* Buat postingan baru */
@@ -182,6 +257,31 @@ export async function createPost(
   })
 
   return response.post
+}
+
+export async function updatePost(
+  postId: string,
+  content: string,
+  token: string,
+  imageUrls?: string[],
+): Promise<FeedPost> {
+  const response = await apiRequest<UpdatePostResponse>(`/posts/${postId}`, {
+    method: 'PATCH',
+    token,
+    body: {
+      content,
+      ...(imageUrls ? { imageUrls } : {}),
+    },
+  })
+
+  return response.post
+}
+
+export async function deletePost(postId: string, token: string) {
+  return apiRequest<{ success: true }>(`/posts/${postId}`, {
+    method: 'DELETE',
+    token,
+  })
 }
 
 /** Ambil detail satu postingan */
