@@ -34,6 +34,8 @@ type GoogleProfile = {
   avatarUrl: string | null
 }
 
+const RESET_TOKEN_DURATION_MS = 1000 * 60 * 30
+
 async function verifyGoogleCredential(credential: string) {
   const googleClientId = process.env.GOOGLE_CLIENT_ID
 
@@ -241,6 +243,80 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
     return { success: true }
   })
+  .post(
+    '/password/forgot',
+    async ({ body }) => {
+      const email = normalizeEmail(body.email)
+      const user = await prisma.user.findUnique({ where: { email } })
+
+      if (!user) {
+        return {
+          success: true,
+          message: 'Jika email terdaftar, token reset password akan dibuat.',
+        }
+      }
+
+      if (!user.passwordHash) {
+        return {
+          success: true,
+          message: 'Akun Google tidak menggunakan password lokal.',
+        }
+      }
+
+      await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } })
+
+      const resetToken = await prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          token: crypto.randomUUID(),
+          expiresAt: new Date(Date.now() + RESET_TOKEN_DURATION_MS),
+        },
+      })
+
+      return {
+        success: true,
+        resetToken: resetToken.token,
+        message: 'Token reset password berhasil dibuat.',
+      }
+    },
+    {
+      body: t.Object({
+        email: t.String({ minLength: 3 }),
+      }),
+    },
+  )
+  .post(
+    '/password/reset',
+    async ({ body, set }) => {
+      const resetToken = await prisma.passwordResetToken.findUnique({
+        where: { token: body.token },
+      })
+
+      if (!resetToken || resetToken.expiresAt <= new Date()) {
+        set.status = 400
+        return errorPayload('Token reset password tidak valid atau sudah kedaluwarsa.')
+      }
+
+      await prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { passwordHash: await Bun.password.hash(body.password) },
+      })
+
+      await prisma.passwordResetToken.delete({ where: { id: resetToken.id } })
+      await prisma.session.deleteMany({ where: { userId: resetToken.userId } })
+
+      return {
+        success: true,
+        message: 'Password berhasil direset. Silakan login ulang.',
+      }
+    },
+    {
+      body: t.Object({
+        token: t.String({ minLength: 1 }),
+        password: t.String({ minLength: 6 }),
+      }),
+    },
+  )
   .get('/me', async ({ request, set }) => {
     const user = await getCurrentUser(request.headers)
 

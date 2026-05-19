@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { AppLayout } from '@/layouts/AppLayout'
-import { createPostComment, fetchPostComments, getStoredSession, getStoredUser, likePost, unlikePost } from '@/services/api'
+import { createPostComment, deleteComment, fetchPostComments, getStoredSession, getStoredUser, likePost, unlikePost, updateComment } from '@/services/api'
 import type { FeedPost, PostComment } from '@/types/social'
 import { CommentComposer } from './components/CommentComposer'
 import { CommentList } from './components/CommentList'
 import { EngagementBar } from './components/EngagementBar'
 import { ModalHeader } from './components/ModalHeader'
 import { PostBody } from './components/PostBody'
-import { fallbackPostComments } from './data/fallbackPostComments'
 
 const MAX_COMMENTS = 5
 
@@ -23,12 +22,14 @@ function stopPropagation(event: React.MouseEvent) {
 }
 
 export function PostDetailPage({ post, comments: initialComments, autoFocusComment = false, onClose }: PostDetailPageProps) {
-  const [comments, setComments] = useState<PostComment[]>(initialComments ?? fallbackPostComments)
+  const [comments, setComments] = useState<PostComment[]>(initialComments ?? [])
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post._count.likes)
   const [commentInput, setCommentInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [isUpdatingLike, setIsUpdatingLike] = useState(false)
+  const [isUpdatingComment, setIsUpdatingComment] = useState(false)
   const [isLoadingComments, setIsLoadingComments] = useState(true)
   const [commentError, setCommentError] = useState<string | null>(null)
   const [composerError, setComposerError] = useState<string | null>(null)
@@ -67,7 +68,7 @@ export function PostDetailPage({ post, comments: initialComments, autoFocusComme
       .catch(() => {
         if (!isMounted) return
         setCommentError('Gagal memuat komentar dari backend.')
-        setComments(initialComments ?? fallbackPostComments)
+        setComments(initialComments ?? [])
       })
       .finally(() => {
         if (!isMounted) return
@@ -133,14 +134,56 @@ export function PostDetailPage({ post, comments: initialComments, autoFocusComme
     setComposerError(null)
 
     try {
-      const comment = await createPostComment(post.id, trimmed, session.token)
-      setComments((currentComments) => [...currentComments, comment])
+      if (editingCommentId) {
+        const comment = await updateComment(editingCommentId, trimmed, session.token)
+        setComments((currentComments) =>
+          currentComments.map((currentComment) => currentComment.id === comment.id ? comment : currentComment),
+        )
+        setEditingCommentId(null)
+      } else {
+        const comment = await createPostComment(post.id, trimmed, session.token)
+        setComments((currentComments) => [...currentComments, comment])
+      }
       setCommentInput('')
       setTimeout(() => inputRef.current?.focus(), 50)
     } catch (error) {
       setComposerError(error instanceof Error ? error.message : 'Komentar gagal dikirim.')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  function handleStartEditComment(comment: PostComment) {
+    setEditingCommentId(comment.id)
+    setCommentInput(comment.content)
+    setComposerError(null)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  async function handleDeleteComment(comment: PostComment) {
+    const session = getStoredSession()
+
+    if (!session?.token || isUpdatingComment) {
+      setComposerError('Sesi tidak ditemukan. Silakan login ulang.')
+      return
+    }
+
+    if (!window.confirm('Hapus komentar ini?')) return
+
+    setIsUpdatingComment(true)
+    setComposerError(null)
+
+    try {
+      await deleteComment(comment.id, session.token)
+      setComments((currentComments) => currentComments.filter((currentComment) => currentComment.id !== comment.id))
+      if (editingCommentId === comment.id) {
+        setEditingCommentId(null)
+        setCommentInput('')
+      }
+    } catch (error) {
+      setComposerError(error instanceof Error ? error.message : 'Komentar gagal dihapus.')
+    } finally {
+      setIsUpdatingComment(false)
     }
   }
 
@@ -188,10 +231,21 @@ export function PostDetailPage({ post, comments: initialComments, autoFocusComme
             Belum ada komentar.
           </div>
         ) : (
-          <CommentList comments={comments} />
+          <CommentList
+            comments={comments}
+            currentUserId={currentUser?.id}
+            isBusy={isUpdatingComment || isSubmitting}
+            onEdit={handleStartEditComment}
+            onDelete={handleDeleteComment}
+          />
         )}
       </div>
 
+      {editingCommentId ? (
+        <div className="border-t border-blue-100 bg-blue-50 px-4 py-2 text-center text-xs font-semibold text-blue-700">
+          Mengedit komentar. Kosongkan lalu batal dengan menutup modal jika tidak jadi.
+        </div>
+      ) : null}
       <CommentComposer
         currentUser={currentUser}
         value={commentInput}

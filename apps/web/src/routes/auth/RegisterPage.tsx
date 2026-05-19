@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronLeft, CircleAlert, CircleHelp, Eye, EyeOff } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { register } from '@/services/api'
+import { navigate } from '@/lib/navigation'
 import { GoogleAuthButton } from './components/GoogleAuthButton'
 
 const footerLinks = [
@@ -221,8 +222,7 @@ export function RegisterPage() {
         password,
       })
 
-      window.history.pushState({}, '', '/home')
-      window.dispatchEvent(new PopStateEvent('popstate'))
+      navigate('/home')
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Registrasi gagal. Coba lagi.')
     } finally {

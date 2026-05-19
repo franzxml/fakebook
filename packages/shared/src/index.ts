@@ -69,7 +69,7 @@ export type MarkNotificationsReadResponse = {
 }
 
 export const appMetadata = {
-  name: 'PPWL Clone Facebook',
+  name: 'Facebook',
   version: '0.1.0',
 } as const
 

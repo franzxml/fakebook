@@ -2,7 +2,15 @@ import type { PostComment } from '@/types/social'
 import { formatRelativeTime } from '../utils/postDetailFormatters'
 import { PostDetailAvatar } from './PostDetailAvatar'
 
-export function CommentList({ comments }: { comments: PostComment[] }) {
+type CommentListProps = {
+  comments: PostComment[]
+  currentUserId?: string
+  onEdit: (comment: PostComment) => void
+  onDelete: (comment: PostComment) => void
+  isBusy?: boolean
+}
+
+export function CommentList({ comments, currentUserId, onEdit, onDelete, isBusy = false }: CommentListProps) {
   return (
     <div className="space-y-3.5 px-4 py-2">
       {comments.map((comment) => (
@@ -19,12 +27,24 @@ export function CommentList({ comments }: { comments: PostComment[] }) {
                 </p>
               </div>
 
-              <button
-                className="flex size-7 items-center justify-center rounded-full text-xs font-bold text-[#65676B] opacity-0 transition-opacity hover:bg-[#F2F3F5] focus:outline-none group-hover:opacity-100"
-                aria-label="Opsi komentar"
-              >
-                ...
-              </button>
+              {currentUserId === comment.author.id ? (
+                <div className="flex opacity-0 transition-opacity group-hover:opacity-100">
+                  <button
+                    className="rounded-full px-2 py-1 text-xs font-bold text-[#65676B] hover:bg-[#F2F3F5] disabled:opacity-50"
+                    disabled={isBusy}
+                    onClick={() => onEdit(comment)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="rounded-full px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    disabled={isBusy}
+                    onClick={() => onDelete(comment)}
+                  >
+                    Hapus
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <p className="mt-1 px-2 text-[12px] text-[#65676B]">

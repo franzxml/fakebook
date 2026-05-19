@@ -1,6 +1,7 @@
 import { CircleAlert, Eye, EyeOff } from 'lucide-react'
 import { useState } from 'react'
 import { login } from '@/services/api'
+import { navigate } from '@/lib/navigation'
 import { GoogleAuthButton } from './components/GoogleAuthButton'
 
 const footerLinks = [
@@ -193,8 +194,7 @@ export function LoginPage() {
         setIsSplashVisible(true)
 
         window.setTimeout(() => {
-          window.history.pushState({}, '', '/home')
-          window.dispatchEvent(new PopStateEvent('popstate'))
+          navigate('/home')
         }, 900)
       } catch (error) {
         setLoginError(true)
@@ -315,6 +315,7 @@ export function LoginPage() {
 
               <button
                 type="button"
+                onClick={() => navigate('/auth/forgot-password')}
                 className="mt-3 flex h-11 w-full items-center justify-center rounded-full text-base font-semibold text-[#1c1e21] transition hover:bg-[#f2f3f5] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1877f2]/25"
               >
                 Lupa kata sandi?
