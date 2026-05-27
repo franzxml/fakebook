@@ -36,6 +36,33 @@ type GoogleProfile = {
 
 const RESET_TOKEN_DURATION_MS = 1000 * 60 * 30
 
+function normalizeUsername(username: string) {
+  return username
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._]/g, '')
+    .replace(/[._]{2,}/g, '.')
+    .replace(/^[._]+|[._]+$/g, '')
+    .slice(0, 30)
+}
+
+function usernameFromProfile(name: string, email: string) {
+  return normalizeUsername(name) || normalizeUsername(email.split('@')[0] ?? '') || 'user'
+}
+
+async function createUniqueUsername(baseUsername: string) {
+  const base = normalizeUsername(baseUsername) || 'user'
+  let candidate = base
+  let suffix = 1
+
+  while (await prisma.user.findUnique({ where: { username: candidate } })) {
+    suffix += 1
+    candidate = `${base.slice(0, Math.max(1, 30 - String(suffix).length - 1))}.${suffix}`
+  }
+
+  return candidate
+}
+
 async function verifyGoogleCredential(credential: string) {
   const googleClientId = process.env.GOOGLE_CLIENT_ID
 
@@ -117,9 +144,11 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       const user = await prisma.user.create({
         data: {
           name: body.name.trim(),
+          username: await createUniqueUsername(body.username || usernameFromProfile(body.name, email)),
           email,
           passwordHash: await Bun.password.hash(body.password),
           avatarUrl: body.avatarUrl,
+          bio: null,
         },
       })
       const session = await createSession(user.id)
@@ -136,6 +165,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         email: t.String({ minLength: 3 }),
         password: t.String({ minLength: 6 }),
         avatarUrl: t.Optional(t.String()),
+        username: t.Optional(t.String({ minLength: 3 })),
       }),
     },
   )
@@ -197,8 +227,10 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         },
         create: {
           name: googleProfile.name,
+          username: await createUniqueUsername(usernameFromProfile(googleProfile.name, googleProfile.email)),
           email: googleProfile.email,
           avatarUrl: googleProfile.avatarUrl,
+          bio: null,
         },
       })
 

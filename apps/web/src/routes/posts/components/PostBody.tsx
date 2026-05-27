@@ -1,14 +1,17 @@
 import type { FeedPost } from '@/types/social'
+import { getDisplayName } from '@/lib/userDisplay'
 import { PostDetailAvatar } from './PostDetailAvatar'
 
 export function PostBody({ post }: { post: FeedPost }) {
+  const authorDisplayName = getDisplayName(post.author)
+
   return (
     <>
       <div className="flex items-center gap-3 px-4 pt-4 pb-2">
-        <PostDetailAvatar name={post.author.name} />
+        <PostDetailAvatar avatarUrl={post.author.avatarUrl} name={authorDisplayName} />
         <div>
           <p style={{ color: '#050505', fontSize: '15px', fontWeight: 600, lineHeight: '1.2' }}>
-            {post.author.name}
+            {authorDisplayName}
           </p>
           <p className="flex items-center gap-1" style={{ color: '#65676B', fontSize: '12px', marginTop: '3px' }}>
             9 Mei · Publik

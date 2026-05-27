@@ -5,8 +5,10 @@ const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 7
 type PublicUserSource = {
   id: string
   name: string
+  username: string | null
   email: string
   avatarUrl: string | null
+  bio: string | null
   createdAt?: Date
   updatedAt?: Date
 }
@@ -21,8 +23,10 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase()
 export const toPublicUser = (user: PublicUserSource) => ({
   id: user.id,
   name: user.name,
+  username: user.username,
   email: user.email,
   avatarUrl: user.avatarUrl,
+  bio: user.bio,
   createdAt: user.createdAt?.toISOString(),
   updatedAt: user.updatedAt?.toISOString(),
 })

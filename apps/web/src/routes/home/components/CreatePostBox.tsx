@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { Image as ImageIcon, Send, X } from 'lucide-react'
 import type { PublicUser } from '@ppwl/shared'
 import { AvatarCircle } from '@/layouts/AppLayout'
-import { createPost, getStoredSession } from '@/services/api'
+import { getDisplayName } from '@/lib/userDisplay'
+import { createPost, getStoredSession, uploadImageFile } from '@/services/api'
 import type { FeedPost } from '@/types/social'
 
-const MAX_IMAGE_BYTES = 700 * 1024
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 type CreatePostBoxProps = {
   user: PublicUser
@@ -14,9 +15,11 @@ type CreatePostBoxProps = {
 
 export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
   const [content, setContent] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const displayName = getDisplayName(user)
 
   function handleImageChange(file: File | undefined) {
     if (!file) return
@@ -27,17 +30,13 @@ export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      setError('Ukuran gambar maksimal 700 KB untuk sementara.')
+      setError('Ukuran gambar maksimal 5 MB.')
       return
     }
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      setImagePreview(typeof reader.result === 'string' ? reader.result : null)
-      setError(null)
-    }
-    reader.onerror = () => setError('Gambar gagal dibaca.')
-    reader.readAsDataURL(file)
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+    setError(null)
   }
 
   async function handleSubmit() {
@@ -55,8 +54,10 @@ export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
     setError(null)
 
     try {
-      const post = await createPost(trimmed || ' ', session.token, imagePreview ? [imagePreview] : [])
+      const imageUrl = imageFile ? await uploadImageFile(imageFile, 'posts', session.token) : null
+      const post = await createPost(trimmed || ' ', session.token, imageUrl ? [imageUrl] : [])
       setContent('')
+      setImageFile(null)
       setImagePreview(null)
       onPostCreated?.(post)
     } catch (submitError) {
@@ -73,7 +74,7 @@ export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
         <textarea
           value={content}
           onChange={(event) => setContent(event.target.value)}
-          placeholder={`Apa yang kamu pikirkan, ${user.name.split(' ')[0]}?`}
+          placeholder={`Apa yang kamu pikirkan, ${displayName.split(' ')[0]}?`}
           rows={2}
           className="flex-1 resize-none rounded-full bg-[#f0f2f5] px-4 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none transition-colors focus:bg-slate-100"
         />
@@ -86,7 +87,10 @@ export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
             type="button"
             className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-slate-950/70 text-white transition hover:bg-slate-950"
             aria-label="Hapus gambar"
-            onClick={() => setImagePreview(null)}
+            onClick={() => {
+              setImageFile(null)
+              setImagePreview(null)
+            }}
           >
             <X size={16} />
           </button>

@@ -30,8 +30,8 @@ VALUES
 
 INSERT OR IGNORE INTO post_images (id, post_id, image_url, created_at)
 VALUES
-  ('seed-image-login-1', 'seed-post-setup-aws', '/picture/login/login-1.png', '2026-05-18 09:01:00'),
-  ('seed-image-login-2', 'seed-post-home-feed', '/picture/login/login-2.png', '2026-05-18 09:16:00');
+  ('seed-image-login-1', 'seed-post-setup-aws', '/images/auth/auth-hero.svg', '2026-05-18 09:01:00'),
+  ('seed-image-login-2', 'seed-post-home-feed', '/images/auth/auth-hero.svg', '2026-05-18 09:16:00');
 
 INSERT OR IGNORE INTO comments (id, post_id, user_id, content, created_at, updated_at)
 VALUES

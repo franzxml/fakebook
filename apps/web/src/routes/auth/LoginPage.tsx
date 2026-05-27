@@ -1,82 +1,22 @@
 import { CircleAlert, Eye, EyeOff } from 'lucide-react'
 import { useState } from 'react'
+import { flushSync } from 'react-dom'
 import { login } from '@/services/api'
 import { navigate } from '@/lib/navigation'
 import { GoogleAuthButton } from './components/GoogleAuthButton'
 
-const footerLinks = [
-  'Daftar',
-  'Masuk',
-  'Messenger',
-  'Facebook Lite',
-  'Video',
-  'Meta Pay',
-  'Meta Store',
-  'Meta Quest',
-  'Ray-Ban Meta',
-  'Meta AI',
-  'Instagram',
-  'Threads',
-  'Kebijakan Privasi',
-  'Pusat Privasi',
-  'Meta di Indonesia',
-  'Tentang',
-  'Buat Iklan',
-  'Buat Halaman',
-  'Developer',
-  'Karier',
-  'Cookie',
-  'Pilihan Iklan',
-  'Ketentuan',
-  'Bantuan',
-  'Pengunggahan Kontak & Non-Pengguna',
-]
+const loginHeroImage = '/images/auth/auth-hero.svg'
+const loginSplashDurationMs = 1000
 
-const footerLanguages = [
-  'Bahasa Indonesia',
-  'English (UK)',
-  'Basa Jawa',
-  'Bahasa Melayu',
-  '日本語',
-  'العربية',
-  'Français (France)',
-  'Bahasa lainnya...',
-]
-
-const loginHeroImages = [
-  '/picture/login/login-1.png',
-  '/picture/login/login-2.png',
-  '/picture/login/login-3.png',
-]
-
-let cachedLoginHeroImage: string | null = null
-
-function getRotatingLoginHeroImage() {
-  if (cachedLoginHeroImage) {
-    return cachedLoginHeroImage
-  }
-
-  if (typeof window === 'undefined') {
-    cachedLoginHeroImage = loginHeroImages[0]
-    return cachedLoginHeroImage
-  }
-
-  const storageKey = 'ppwl-login-hero-index'
-  const previousIndex = Number(window.localStorage.getItem(storageKey) ?? '-1')
-  const nextIndex = Number.isFinite(previousIndex) ? (previousIndex + 1) % loginHeroImages.length : 0
-
-  window.localStorage.setItem(storageKey, String(nextIndex))
-  cachedLoginHeroImage = loginHeroImages[nextIndex]
-
-  return cachedLoginHeroImage
-}
-
-function getFooterLinkHref(index: number) {
-  return index === 1 ? '/auth' : '/auth/register'
-}
-
-function isFooterLinkInteractive(index: number) {
-  return index === 1
+function FakebookLogo({ className = 'size-[60px] text-2xl' }: { className?: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`flex items-center justify-center rounded-2xl bg-[#0866ff] font-black leading-none tracking-normal text-white shadow-[inset_0_-3px_0_rgba(0,0,0,0.14)] ${className}`}
+    >
+      fk
+    </div>
+  )
 }
 
 function LoginField({
@@ -142,28 +82,13 @@ function LoginSplashScreen() {
   return (
     <main className="fixed inset-0 z-50 flex min-h-screen flex-col bg-[#f7f8fb] text-[#0866ff]">
       <div className="grid flex-1 place-items-center">
-        <div
-          aria-hidden="true"
-          className="flex size-[92px] items-center justify-center rounded-full bg-[#0866ff] text-[96px] font-bold leading-none text-white"
-        >
-          <span className="-mt-1 font-sans">f</span>
-        </div>
-      </div>
-      <div className="pb-14 text-center">
-        <p className="text-sm font-semibold text-[#8a94a6]">from</p>
-        <div className="mt-1 flex items-center justify-center gap-1 text-xl font-bold">
-          <span className="text-2xl leading-none" aria-hidden="true">
-            ∞
-          </span>
-          <span>Meta</span>
-        </div>
+        <FakebookLogo className="size-[92px] rounded-[26px] text-[38px]" />
       </div>
     </main>
   )
 }
 
 export function LoginPage() {
-  const [loginHeroImage] = useState(getRotatingLoginHeroImage)
   const [emailError, setEmailError] = useState(false)
   const [loginError, setLoginError] = useState(false)
   const [password, setPassword] = useState('')
@@ -171,6 +96,16 @@ export function LoginPage() {
   const [isSplashVisible, setIsSplashVisible] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('Informasi login yang Anda masukkan salah.')
+
+  function showSplashThenNavigateHome() {
+    flushSync(() => {
+      setIsSplashVisible(true)
+    })
+
+    window.setTimeout(() => {
+      navigate('/home')
+    }, loginSplashDurationMs)
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -189,13 +124,8 @@ export function LoginPage() {
       setLoginError(false)
 
       try {
-        const auth = await login({ email, password })
-        window.sessionStorage.setItem('ppwl-welcome-toast', auth.user.name)
-        setIsSplashVisible(true)
-
-        window.setTimeout(() => {
-          navigate('/home')
-        }, 900)
+        await login({ email, password })
+        showSplashThenNavigateHome()
       } catch (error) {
         setLoginError(true)
         setErrorMessage(error instanceof Error ? error.message : 'Informasi login yang Anda masukkan salah.')
@@ -205,25 +135,24 @@ export function LoginPage() {
     }
   }
 
+  function handleGoogleAuthenticated() {
+    showSplashThenNavigateHome()
+  }
+
   if (isSplashVisible) {
     return <LoginSplashScreen />
   }
 
   return (
     <main className="min-h-screen bg-white text-[#1c1e21]">
-      <section className="grid min-h-[calc(100vh-12rem)] border-b border-[#dadde1] lg:grid-cols-[55%_45%]">
+      <section className="grid min-h-screen lg:grid-cols-[55%_45%]">
         <section className="relative hidden overflow-hidden border-r border-[#dadde1] bg-white px-10 py-10 lg:block">
-          <div
-            aria-hidden="true"
-            className="flex size-[60px] items-center justify-center rounded-full bg-[#0866ff] text-[64px] font-bold leading-none text-white"
-          >
-            <span className="-mt-1 font-sans">f</span>
-          </div>
+          <FakebookLogo />
 
           <img
             src={loginHeroImage}
             alt=""
-            className="pointer-events-none absolute right-4 top-9 w-[min(45vw,580px)] select-none object-contain xl:right-8 2xl:w-[620px]"
+            className="pointer-events-none absolute right-4 top-14 w-[min(45vw,580px)] select-none rounded-[2rem] object-contain xl:right-8 2xl:w-[620px]"
             draggable={false}
           />
 
@@ -231,26 +160,21 @@ export function LoginPage() {
             <span className="block">Jelajahi</span>
             <span className="block">hal-hal yang</span>
             <span className="block text-[#1877f2]">Anda</span>
-            <span className="block text-[#1877f2]">sukai.</span>
+            <span className="block text-[#1877f2]">cintai.</span>
           </h1>
         </section>
 
-        <section className="flex min-h-[calc(100vh-12rem)] items-center justify-center px-6 py-12 lg:min-h-0">
+        <section className="flex min-h-screen items-center justify-center px-6 py-12 lg:min-h-0">
           <div className="w-full max-w-[34rem]">
-            <div
-              aria-hidden="true"
-              className="mx-auto mb-10 flex size-[60px] items-center justify-center rounded-full bg-[#0866ff] text-[64px] font-bold leading-none text-white lg:hidden"
-            >
-              <span className="-mt-1 font-sans">f</span>
-            </div>
+            <FakebookLogo className="mx-auto mb-10 size-[60px] text-2xl lg:hidden" />
 
             <form
               className="mx-auto w-full max-w-[34rem]"
-              aria-label="Masuk Facebook"
+              aria-label="Masuk Fakebook"
               noValidate
               onSubmit={handleSubmit}
             >
-              <h2 className="mb-7 text-xl font-bold leading-tight text-[#1c1e21]">Masuk Facebook</h2>
+              <h2 className="mb-7 text-xl font-bold leading-tight text-[#1c1e21]">Masuk Fakebook</h2>
 
               <div className="space-y-4">
                 {loginError ? (
@@ -329,43 +253,13 @@ export function LoginPage() {
               </a>
 
               <div className="mt-3">
-                <GoogleAuthButton mode="login" />
+                <GoogleAuthButton mode="login" onAuthenticated={handleGoogleAuthenticated} />
               </div>
 
-              <div className="mt-6 flex items-center justify-center gap-1 text-lg font-semibold text-[#1c1e21]">
-                <span className="text-2xl font-bold leading-none text-[#0866ff]" aria-hidden="true">
-                  ∞
-                </span>
-                <span>Meta</span>
-              </div>
             </form>
           </div>
         </section>
       </section>
-
-      <footer className="mx-auto max-w-[67rem] px-4 py-5 text-sm font-medium leading-[1.45] text-[#65676b]">
-        <div className="flex flex-wrap gap-x-8 gap-y-2" aria-label="Bahasa" role="list">
-          {footerLanguages.map((language) => (
-            <span key={language} role="listitem">
-              {language}
-            </span>
-          ))}
-        </div>
-
-        <nav className="mt-3 flex flex-wrap gap-x-3 gap-y-2" aria-label="Tautan Facebook">
-          {footerLinks.map((link, index) => (
-            isFooterLinkInteractive(index) ? (
-              <a key={link} href={getFooterLinkHref(index)} className="hover:underline">
-                {link}
-              </a>
-            ) : (
-              <span key={link}>{link}</span>
-            )
-          ))}
-        </nav>
-
-        <p className="mt-4">Meta © 2026</p>
-      </footer>
     </main>
   )
 }

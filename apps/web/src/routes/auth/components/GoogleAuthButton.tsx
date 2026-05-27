@@ -25,12 +25,16 @@ declare global {
 
 type GoogleAuthButtonProps = {
   mode: 'login' | 'register'
+  onAuthenticated?: (userName: string) => void
 }
 
 const googleButtonText = {
   login: 'Login dengan Google',
   register: 'Daftar dengan Google',
 } satisfies Record<GoogleAuthButtonProps['mode'], string>
+
+const googleIdentityScriptUrl = 'https://accounts.google.com/gsi/client'
+let googleIdentityScriptPromise: Promise<void> | null = null
 
 function GoogleIcon() {
   return (
@@ -55,34 +59,62 @@ function GoogleIcon() {
   )
 }
 
-function navigateHome(userName: string) {
-  window.sessionStorage.setItem('ppwl-welcome-toast', userName)
+function navigateHome() {
   navigate('/home')
 }
 
 function loadGoogleIdentityScript() {
-  const existingScript = document.querySelector<HTMLScriptElement>(
-    'script[src="https://accounts.google.com/gsi/client"]',
-  )
-
-  if (existingScript) {
+  if (window.google?.accounts?.oauth2) {
     return Promise.resolve()
   }
 
-  return new Promise<void>((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.async = true
-    script.defer = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Script Google gagal dimuat.'))
-    document.head.appendChild(script)
-  })
+  if (!googleIdentityScriptPromise) {
+    googleIdentityScriptPromise = new Promise<void>((resolve, reject) => {
+      const waitForGoogle = () => {
+        const startedAt = Date.now()
+        const interval = window.setInterval(() => {
+          if (window.google?.accounts?.oauth2) {
+            window.clearInterval(interval)
+            resolve()
+            return
+          }
+
+          if (Date.now() - startedAt > 5000) {
+            window.clearInterval(interval)
+            googleIdentityScriptPromise = null
+            reject(new Error('Google OAuth belum siap. Coba muat ulang halaman.'))
+          }
+        }, 50)
+      }
+
+      const existingScript = document.querySelector<HTMLScriptElement>(
+        `script[src="${googleIdentityScriptUrl}"]`,
+      )
+
+      if (existingScript) {
+        waitForGoogle()
+        return
+      }
+
+      const script = document.createElement('script')
+      script.src = googleIdentityScriptUrl
+      script.async = true
+      script.defer = true
+      script.onload = waitForGoogle
+      script.onerror = () => {
+        googleIdentityScriptPromise = null
+        reject(new Error('Script Google gagal dimuat.'))
+      }
+      document.head.appendChild(script)
+    })
+  }
+
+  return googleIdentityScriptPromise
 }
 
-export function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
+export function GoogleAuthButton({ mode, onAuthenticated }: GoogleAuthButtonProps) {
   const [error, setError] = useState<string | null>(null)
-  const [isReady, setIsReady] = useState(!googleClientId)
+  const [isReady, setIsReady] = useState(!googleClientId || Boolean(window.google?.accounts?.oauth2))
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -94,7 +126,7 @@ export function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
 
     loadGoogleIdentityScript()
       .then(() => {
-        if (!isActive || !window.google?.accounts?.oauth2) return
+        if (!isActive) return
 
         setIsReady(true)
       })
@@ -108,7 +140,7 @@ export function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
     }
   }, [])
 
-  function handleGoogleLogin() {
+  async function handleGoogleLogin() {
     setError(null)
 
     if (!googleClientId) {
@@ -117,6 +149,15 @@ export function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
     }
 
     setIsSubmitting(true)
+
+    try {
+      await loadGoogleIdentityScript()
+      setIsReady(true)
+    } catch (scriptError) {
+      setError(scriptError instanceof Error ? scriptError.message : 'Google OAuth gagal dimuat.')
+      setIsSubmitting(false)
+      return
+    }
 
     const tokenClient = window.google?.accounts?.oauth2?.initTokenClient({
       client_id: googleClientId,
@@ -136,7 +177,11 @@ export function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
 
         try {
           const auth = await loginWithGoogle({ accessToken: response.access_token })
-          navigateHome(auth.user.name)
+          if (onAuthenticated) {
+            onAuthenticated(auth.user.name)
+          } else {
+            navigateHome()
+          }
         } catch (loginError) {
           setError(loginError instanceof Error ? loginError.message : 'Login Google gagal.')
         } finally {
@@ -180,12 +225,12 @@ export function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
     <div className="space-y-2">
       <button
         type="button"
-        disabled={!isReady || isSubmitting}
+        disabled={isSubmitting}
         className="flex h-11 w-full items-center justify-center gap-3 rounded-full border border-[#d8dce1] bg-white px-6 text-base font-semibold text-[#1c1e21] transition hover:bg-[#f2f3f5] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1877f2]/20"
         onClick={handleGoogleLogin}
       >
         <GoogleIcon />
-        <span>{isSubmitting ? 'Memproses...' : googleButtonText[mode]}</span>
+        <span>{isSubmitting ? 'Memproses...' : isReady ? googleButtonText[mode] : 'Menyiapkan Google...'}</span>
       </button>
       {error ? (
         <p className="flex items-center justify-center gap-2 text-sm font-semibold text-[#e41e3f]" role="alert">

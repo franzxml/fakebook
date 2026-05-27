@@ -4,45 +4,6 @@ import { register } from '@/services/api'
 import { navigate } from '@/lib/navigation'
 import { GoogleAuthButton } from './components/GoogleAuthButton'
 
-const footerLinks = [
-  'Daftar',
-  'Masuk',
-  'Messenger',
-  'Facebook Lite',
-  'Video',
-  'Meta Pay',
-  'Meta Store',
-  'Meta Quest',
-  'Ray-Ban Meta',
-  'Meta AI',
-  'Instagram',
-  'Threads',
-  'Kebijakan Privasi',
-  'Pusat Privasi',
-  'Meta di Indonesia',
-  'Tentang',
-  'Buat Iklan',
-  'Buat Halaman',
-  'Developer',
-  'Karier',
-  'Cookie',
-  'Pilihan Iklan',
-  'Ketentuan',
-  'Bantuan',
-  'Pengunggahan Kontak & Non-Pengguna',
-]
-
-const footerLanguages = [
-  'Bahasa Indonesia',
-  'English (UK)',
-  'Basa Jawa',
-  'Bahasa Melayu',
-  '日本語',
-  'العربية',
-  'Français (France)',
-  'Bahasa lainnya...',
-]
-
 const days = Array.from({ length: 31 }, (_, index) => String(index + 1))
 const months = [
   'Januari',
@@ -71,12 +32,15 @@ const registerSelectClass =
 
 const passwordPunctuationPattern = /[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/
 
-function getFooterLinkHref(link: string) {
-  return link === 'Masuk' ? '/auth' : '/auth/register'
-}
-
-function isFooterLinkInteractive(link: string) {
-  return link === 'Daftar' || link === 'Masuk'
+function FakebookLogo() {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex size-10 items-center justify-center rounded-xl bg-[#0866ff] text-[17px] font-black leading-none tracking-normal text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.14)]"
+    >
+      fk
+    </div>
+  )
 }
 
 function SelectField({
@@ -150,16 +114,22 @@ export function RegisterPage() {
   const birthdateInfoRef = useRef<HTMLElement | null>(null)
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [username, setUsername] = useState('')
   const [contact, setContact] = useState('')
   const [password, setPassword] = useState('')
   const [isNameTouched, setIsNameTouched] = useState(false)
   const [isContactTouched, setIsContactTouched] = useState(false)
+  const [isUsernameTouched, setIsUsernameTouched] = useState(false)
   const [isPasswordTouched, setIsPasswordTouched] = useState(false)
   const [isBirthdateInfoOpen, setIsBirthdateInfoOpen] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const nameError = isNameTouched && (firstName.trim().length < 2 || lastName.trim().length < 2)
+  const trimmedUsername = username.trim().toLowerCase()
+  const usernameError = isUsernameTouched && (
+    trimmedUsername.length < 3 || !/^[a-z0-9._]+$/.test(trimmedUsername)
+  )
   const trimmedContact = contact.trim()
   const isEmailContact = trimmedContact.includes('@')
   const isPhoneContact = /^[\d\s()+-]+$/.test(trimmedContact)
@@ -197,18 +167,22 @@ export function RegisterPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsNameTouched(true)
+    setIsUsernameTouched(true)
     setIsContactTouched(true)
     setIsPasswordTouched(true)
     setSubmitError(null)
 
     const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedContact)
     const hasNameError = firstName.trim().length < 2 || lastName.trim().length < 2
+    const hasUsernameError = trimmedUsername.length < 3 || !/^[a-z0-9._]+$/.test(trimmedUsername)
     const hasPasswordError =
       password.length < 6 || !/[A-Za-z]/.test(password) || !/\d/.test(password) || !passwordPunctuationPattern.test(password)
 
-    if (hasNameError || hasPasswordError || !isValidEmail || isSubmitting) {
+    if (hasNameError || hasUsernameError || hasPasswordError || !isValidEmail || isSubmitting) {
       if (!isValidEmail) {
         setSubmitError('Untuk saat ini registrasi backend membutuhkan alamat email yang valid.')
+      } else if (hasUsernameError) {
+        setSubmitError('Username minimal 3 karakter dan hanya boleh berisi huruf kecil, angka, titik, atau garis bawah.')
       }
       return
     }
@@ -218,6 +192,7 @@ export function RegisterPage() {
     try {
       await register({
         name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+        username: trimmedUsername,
         email: trimmedContact,
         password,
       })
@@ -241,16 +216,13 @@ export function RegisterPage() {
           <ChevronLeft className="size-8" aria-hidden="true" strokeWidth={2.2} />
         </a>
 
-        <div className="mt-6 flex items-center gap-2 text-[20px] font-bold leading-none">
-          <span className="text-[28px] font-bold leading-none text-[#0866ff]" aria-hidden="true">
-            ∞
-          </span>
-          <span>Meta</span>
+        <div className="mt-6">
+          <FakebookLogo />
         </div>
 
         <header className="mt-6">
           <h1 className="text-[32px] font-bold leading-tight tracking-normal sm:text-[34px]">
-            Mulai di Facebook
+            Mulai di Fakebook
           </h1>
           <p className="mt-2 max-w-[610px] text-[20px] font-medium leading-[1.25] text-[#1c1e21] sm:text-[21px]">
             Buat akun untuk terhubung dengan teman, keluarga, dan komunitas orang-orang yang
@@ -293,7 +265,7 @@ export function RegisterPage() {
             </div>
             {nameError ? (
               <p className="text-[17px] font-medium leading-[1.35] text-[#e41e3f]" role="alert">
-                Nama depan atau nama belakang di Facebook tidak boleh terlalu pendek.{' '}
+                Nama depan atau nama belakang di Fakebook tidak boleh terlalu pendek.{' '}
                 <span className="font-bold text-[#0866e8]">
                   Learn more
                 </span>{' '}
@@ -316,7 +288,7 @@ export function RegisterPage() {
                 aria-label="Informasi tanggal lahir"
               >
                 Memberikan tanggal lahir Anda membantu memastikan Anda mendapatkan pengalaman
-                Facebook yang tepat sesuai usia Anda. Jika Anda ingin mengubah siapa yang melihat
+                Fakebook yang tepat sesuai usia Anda. Jika Anda ingin mengubah siapa yang melihat
                 ini, buka bagian Tentang pada profil Anda. Untuk rincian selengkapnya, buka{' '}
                 <span className="font-bold text-[#0866e8]">Kebijakan Privasi</span> kami.
               </div>
@@ -329,6 +301,29 @@ export function RegisterPage() {
           </section>
 
           <section className="space-y-3">
+            <FieldLabel>Username</FieldLabel>
+            <input
+              name="username"
+              type="text"
+              aria-label="Username"
+              aria-invalid={usernameError ? 'true' : undefined}
+              placeholder="username"
+              value={username}
+              className={usernameError ? registerErrorFieldClass : registerFieldClass}
+              onBlur={() => setIsUsernameTouched(true)}
+              onChange={(event) => {
+                setUsername(event.target.value.toLowerCase())
+                setIsUsernameTouched(true)
+              }}
+            />
+            {usernameError ? (
+              <p className="text-[17px] font-medium leading-[1.35] text-[#e41e3f]" role="alert">
+                Gunakan minimal 3 karakter: huruf kecil, angka, titik, atau garis bawah.
+              </p>
+            ) : null}
+          </section>
+
+          <section className="space-y-3">
             <InfoLabel>Jenis kelamin</InfoLabel>
             <SelectField
               ariaLabel="Jenis kelamin"
@@ -338,13 +333,13 @@ export function RegisterPage() {
           </section>
 
           <section className="space-y-3">
-            <FieldLabel>Nomor ponsel atau email</FieldLabel>
+            <FieldLabel>Email</FieldLabel>
             <input
               name="contact"
               type="text"
-              aria-label="Nomor ponsel atau email"
+              aria-label="Email"
               aria-invalid={contactError ? 'true' : undefined}
-              placeholder="Nomor ponsel atau email"
+              placeholder="Email"
               value={contact}
               className={`${contactError ? registerErrorFieldClass : registerFieldClass} w-full`}
               onBlur={() => setIsContactTouched(true)}
@@ -356,16 +351,9 @@ export function RegisterPage() {
             {contactError ? (
               <p className="flex gap-2 text-[17px] font-medium leading-[1.35] text-[#e41e3f]" role="alert">
                 <CircleAlert className="mt-0.5 size-5 shrink-0" aria-hidden="true" strokeWidth={2.2} />
-                <span>Harap masukkan nomor telepon atau alamat email yang valid.</span>
+                <span>Harap masukkan alamat email yang valid.</span>
               </p>
-            ) : (
-              <p className="text-[17px] font-medium leading-[1.25] text-[#1c1e21]">
-                Anda mungkin menerima notifikasi dari kami.{' '}
-                <a href="/auth" className="font-bold text-[#0866e8] hover:underline">
-                  Pelajari cara kami menanyakan informasi kontak Anda
-                </a>
-              </p>
-            )}
+            ) : null}
           </section>
 
           <section className="space-y-3">
@@ -419,39 +407,6 @@ export function RegisterPage() {
             ) : null}
           </section>
 
-          <section className="space-y-5 pt-4 text-[17px] font-medium leading-[1.25] text-[#1c1e21]">
-            <p>
-              Orang yang menggunakan layanan kami mungkin telah mengunggah informasi kontak Anda ke
-              Facebook.{' '}
-              <a href="/auth" className="font-bold text-[#0866e8] hover:underline">
-                Pelajari selengkapnya.
-              </a>
-            </p>
-            <p>
-              Dengan mengetuk Kirim, Anda menyetujui pembuatan akun serta{' '}
-              <a href="/auth" className="font-bold text-[#0866e8] hover:underline">
-                Ketentuan
-              </a>
-              ,{' '}
-              <a href="/auth" className="font-bold text-[#0866e8] hover:underline">
-                Kebijakan Privasi
-              </a>
-              , dan{' '}
-              <a href="/auth" className="font-bold text-[#0866e8] hover:underline">
-                Kebijakan Cookie
-              </a>{' '}
-              Facebook.
-            </p>
-            <p>
-              <a href="/auth" className="font-bold text-[#0866e8] hover:underline">
-                Kebijakan Privasi
-              </a>{' '}
-              menjelaskan cara kami dapat menggunakan informasi yang kami kumpulkan saat Anda membuat
-              akun. Misalnya, kami menggunakan informasi ini untuk menyediakan, mempersonalisasi, dan
-              meningkatkan produk kami, termasuk iklan.
-            </p>
-          </section>
-
           <div className="space-y-3 pb-3">
             {submitError ? (
               <p className="flex gap-2 rounded-2xl border border-[#e41e3f]/30 bg-[#fff5f7] px-4 py-3 text-[16px] font-semibold leading-snug text-[#e41e3f]" role="alert">
@@ -477,28 +432,6 @@ export function RegisterPage() {
         </form>
       </section>
 
-      <footer className="mx-auto mt-10 max-w-[1020px] px-5 pb-8 pt-5 text-[15px] font-medium leading-[1.45] text-[#65676b] sm:px-6">
-        <div className="flex flex-wrap gap-x-8 gap-y-2" aria-label="Bahasa" role="list">
-          {footerLanguages.map((language) => (
-            <span key={language} role="listitem">
-              {language}
-            </span>
-          ))}
-        </div>
-
-        <nav className="mt-4 flex flex-wrap gap-x-4 gap-y-2" aria-label="Tautan Facebook">
-          {footerLinks.map((link) => (
-            isFooterLinkInteractive(link) ? (
-              <a key={link} href={getFooterLinkHref(link)} className="hover:underline">
-                {link}
-              </a>
-            ) : (
-              <span key={link}>{link}</span>
-            )
-          ))}
-        </nav>
-        <p className="mt-5">Meta © 2026</p>
-      </footer>
     </main>
   )
 }

@@ -8,8 +8,10 @@ const usersAdminKey = process.env.ADMIN_USERS_KEY ?? 'your-secret-key'
 const publicAuthorSelect = {
   id: true,
   name: true,
+  username: true,
   email: true,
   avatarUrl: true,
+  bio: true,
 } as const
 
 export const userRoutes = new Elysia({ prefix: '/users' })

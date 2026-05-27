@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { MessageCircle, MoreHorizontal, Pencil, Share2, ThumbsUp, Trash2 } from 'lucide-react'
+import { MessageCircle, MoreHorizontal, Pencil, ThumbsUp, Trash2 } from 'lucide-react'
 import type { FeedPost, PublicUser } from '@ppwl/shared'
 import { deletePost, getStoredSession, likePost, unlikePost, updatePost } from '@/services/api'
+import { getDisplayName } from '@/lib/userDisplay'
 import { HomeAvatar } from './HomeAvatar'
 
 function PostMedia({ post }: { post: FeedPost }) {
@@ -12,20 +13,8 @@ function PostMedia({ post }: { post: FeedPost }) {
   return <img src={imageUrl} alt="" className="mt-3 max-h-[460px] w-full object-cover" />
 }
 
-function getLikedPostIds(userId?: string) {
-  if (!userId) return new Set<string>()
-
-  try {
-    const raw = localStorage.getItem(`liked-posts:${userId}`)
-    const ids = raw ? JSON.parse(raw) as string[] : []
-    return new Set(ids)
-  } catch {
-    return new Set<string>()
-  }
-}
-
-function saveLikedPostIds(userId: string, likedPostIds: Set<string>) {
-  localStorage.setItem(`liked-posts:${userId}`, JSON.stringify([...likedPostIds]))
+function isPostLikedByUser(post: FeedPost, userId?: string) {
+  return Boolean(userId && post.likes?.some((like) => like.userId === userId))
 }
 
 export function PostCard({
@@ -33,19 +22,21 @@ export function PostCard({
   currentUser,
   onOpenDetail,
   onOpenComments,
-  onLikeCountChange,
+  onLikeStatusChange,
   onPostUpdated,
   onPostDeleted,
+  onOpenAuthor,
 }: {
   post: FeedPost
   currentUser?: PublicUser | null
   onOpenDetail: () => void
   onOpenComments: () => void
-  onLikeCountChange: (postId: string, nextLikeCount: number) => void
+  onLikeStatusChange: (postId: string, nextLikeCount: number, nextLiked: boolean) => void
   onPostUpdated: (post: FeedPost) => void
   onPostDeleted: (postId: string) => void
+  onOpenAuthor?: () => void
 }) {
-  const [liked, setLiked] = useState(() => getLikedPostIds(currentUser?.id).has(post.id))
+  const [liked, setLiked] = useState(() => isPostLikedByUser(post, currentUser?.id))
   const [isUpdatingLike, setIsUpdatingLike] = useState(false)
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -55,10 +46,11 @@ export function PostCard({
   const [postError, setPostError] = useState<string | null>(null)
   const likeCount = post._count.likes
   const isOwner = Boolean(currentUser?.id && currentUser.id === post.author.id)
+  const authorDisplayName = getDisplayName(post.author)
 
   useEffect(() => {
-    setLiked(getLikedPostIds(currentUser?.id).has(post.id))
-  }, [currentUser?.id, post.id])
+    setLiked(isPostLikedByUser(post, currentUser?.id))
+  }, [currentUser?.id, post.id, post.likes])
 
   useEffect(() => {
     setEditContent(post.content)
@@ -71,18 +63,10 @@ export function PostCard({
 
     const nextLiked = !liked
     const nextLikeCount = Math.max(likeCount + (nextLiked ? 1 : -1), 0)
-    const likedPostIds = getLikedPostIds(currentUser.id)
 
     setLiked(nextLiked)
-    onLikeCountChange(post.id, nextLikeCount)
+    onLikeStatusChange(post.id, nextLikeCount, nextLiked)
     setIsUpdatingLike(true)
-
-    if (nextLiked) {
-      likedPostIds.add(post.id)
-    } else {
-      likedPostIds.delete(post.id)
-    }
-    saveLikedPostIds(currentUser.id, likedPostIds)
 
     try {
       if (nextLiked) {
@@ -91,17 +75,8 @@ export function PostCard({
         await unlikePost(post.id, session.token)
       }
     } catch {
-      const rollbackLikedPostIds = getLikedPostIds(currentUser.id)
-
       setLiked(liked)
-      onLikeCountChange(post.id, likeCount)
-
-      if (liked) {
-        rollbackLikedPostIds.add(post.id)
-      } else {
-        rollbackLikedPostIds.delete(post.id)
-      }
-      saveLikedPostIds(currentUser.id, rollbackLikedPostIds)
+      onLikeStatusChange(post.id, likeCount, liked)
     } finally {
       setIsUpdatingLike(false)
     }
@@ -152,10 +127,20 @@ export function PostCard({
     <article className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
       <div className="p-4 pb-2">
         <div className="flex items-start justify-between">
-          <button className="flex gap-3 text-left" onClick={onOpenDetail}>
-            <HomeAvatar name={post.author.name} imageUrl={post.author.avatarUrl} />
+          <button
+            className="flex gap-3 text-left"
+            onClick={(event) => {
+              event.stopPropagation()
+              if (onOpenAuthor) {
+                onOpenAuthor()
+              } else {
+                onOpenDetail()
+              }
+            }}
+          >
+            <HomeAvatar name={authorDisplayName} imageUrl={post.author.avatarUrl} />
             <div>
-              <h3 className="text-sm font-bold text-gray-900">{post.author.name}</h3>
+              <h3 className="text-sm font-bold text-gray-900">{authorDisplayName}</h3>
               <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleString('id-ID')} · publik</p>
             </div>
           </button>
@@ -240,9 +225,9 @@ export function PostCard({
       <div className="px-4 py-2">
         <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm text-gray-500">
           <span>👍 {likeCount}</span>
-          <button onClick={onOpenComments}>{post._count.comments} komentar · 0 dibagikan</button>
+          <button onClick={onOpenComments}>{post._count.comments} komentar</button>
         </div>
-        <div className="grid grid-cols-3 gap-1 pt-1 text-sm font-semibold text-gray-600">
+        <div className="grid grid-cols-2 gap-1 pt-1 text-sm font-semibold text-gray-600">
           <button
             className={`flex items-center justify-center gap-2 rounded-lg py-2 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 ${liked ? 'text-blue-600' : ''}`}
             disabled={isUpdatingLike}
@@ -252,9 +237,6 @@ export function PostCard({
           </button>
           <button className="flex items-center justify-center gap-2 rounded-lg py-2 hover:bg-gray-100" onClick={onOpenComments}>
             <MessageCircle size={19} /> Komentar
-          </button>
-          <button className="flex items-center justify-center gap-2 rounded-lg py-2 hover:bg-gray-100">
-            <Share2 size={19} /> Bagikan
           </button>
         </div>
       </div>

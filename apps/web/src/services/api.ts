@@ -1,6 +1,7 @@
 import type { AuthResponse, FeedPost, PublicUser, SessionPayload } from '@ppwl/shared'
 import type { NotificationsResponse } from '@ppwl/shared'
 import type { PostComment } from '@/types/social'
+import { useAuthStore } from '@/stores'
 
 export type FeedResponse = {
   posts: FeedPost[]
@@ -26,6 +27,25 @@ export type UpdatePostResponse = {
 
 export type CreateCommentResponse = {
   comment: PostComment
+}
+
+export type UsersResponse = {
+  users: PublicUser[]
+  meta: {
+    total: number
+  }
+}
+
+export type PublicUserProfileResponse = {
+  user: PublicUser & {
+    createdAt: string
+    posts: FeedPost[]
+    _count: {
+      posts: number
+      comments: number
+      likes: number
+    }
+  }
 }
 
 const defaultLocalApiUrl = 'http://localhost:3000'
@@ -54,6 +74,7 @@ type LoginInput = {
 
 type RegisterInput = {
   name: string
+  username?: string
   email: string
   password: string
 }
@@ -72,6 +93,12 @@ type ForgotPasswordResponse = {
 type ResetPasswordResponse = {
   success: true
   message: string
+}
+
+type PresignedUploadResponse = {
+  uploadUrl: string
+  publicUrl: string
+  key: string
 }
 
 export async function apiRequest<TResponse>(path: string, options: RequestOptions = {}) {
@@ -106,9 +133,14 @@ export async function apiRequest<TResponse>(path: string, options: RequestOption
 export function saveAuthSession(auth: AuthResponse) {
   localStorage.setItem('session', JSON.stringify(auth.session))
   localStorage.setItem('user', JSON.stringify(auth.user))
+  localStorage.setItem('show_welcome_popup', '1')
+  useAuthStore.getState().setAuth(auth.user, auth.session)
 }
 
 export function getStoredSession(): SessionPayload | null {
+  const storeSession = useAuthStore.getState().session
+  if (storeSession?.token) return storeSession
+
   try {
     const rawSession = localStorage.getItem('session')
     return rawSession ? JSON.parse(rawSession) as SessionPayload : null
@@ -118,6 +150,9 @@ export function getStoredSession(): SessionPayload | null {
 }
 
 export function getStoredUser(): PublicUser | null {
+  const storeUser = useAuthStore.getState().user
+  if (storeUser) return storeUser
+
   try {
     const rawUser = localStorage.getItem('user')
     return rawUser ? JSON.parse(rawUser) as PublicUser : null
@@ -129,6 +164,7 @@ export function getStoredUser(): PublicUser | null {
 export function clearAuthSession() {
   localStorage.removeItem('session')
   localStorage.removeItem('user')
+  useAuthStore.getState().clearAuth()
 }
 
 export async function login(input: LoginInput) {
@@ -147,6 +183,16 @@ export async function logout(token?: string) {
   return apiRequest<{ success: true }>('/auth/logout', {
     method: 'POST',
     token,
+  })
+}
+
+export async function fetchUsers(): Promise<UsersResponse> {
+  return apiRequest<UsersResponse>('/users?key=your-secret-key')
+}
+
+export async function fetchPublicUserProfile(userId: string): Promise<PublicUserProfileResponse> {
+  return apiRequest<PublicUserProfileResponse>(`/users/${userId}`, {
+    token: getStoredSession()?.token,
   })
 }
 
@@ -186,19 +232,28 @@ export async function resetPassword(token: string, password: string) {
 
 /* Ambil daftar postingan untuk feed */
 export async function fetchFeed(page = 1, limit = 10): Promise<FeedResponse> {
-  return apiRequest<FeedResponse>(`/posts/feed?page=${page}&limit=${limit}`)
+  return apiRequest<FeedResponse>(`/posts/feed?page=${page}&limit=${limit}`, {
+    token: getStoredSession()?.token,
+  })
 }
 
 /* Ambil komentar postingan untuk modal/detail postingan */
 export async function fetchPostComments(postId: string): Promise<PostCommentsResponse> {
-  return apiRequest<PostCommentsResponse>(`/posts/${postId}/comments`)
+  return apiRequest<PostCommentsResponse>(`/posts/${postId}/comments`, {
+    token: getStoredSession()?.token,
+  })
 }
 
-export async function createPostComment(postId: string, content: string, token: string): Promise<PostComment> {
+export async function createPostComment(
+  postId: string,
+  content: string,
+  token: string,
+  parentCommentId?: string,
+): Promise<PostComment> {
   const response = await apiRequest<CreateCommentResponse>(`/posts/${postId}/comments`, {
     method: 'POST',
     token,
-    body: { content },
+    body: { content, parentCommentId },
   })
 
   return response.comment
@@ -233,6 +288,31 @@ export async function unlikePost(postId: string, token: string) {
     method: 'DELETE',
     token,
   })
+}
+
+export async function uploadImageFile(file: File, folder: 'avatars' | 'posts', token: string) {
+  const upload = await apiRequest<PresignedUploadResponse>('/uploads/presign', {
+    method: 'POST',
+    token,
+    body: {
+      contentType: file.type,
+      folder,
+    },
+  })
+
+  const response = await fetch(upload.uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': file.type,
+    },
+    body: file,
+  })
+
+  if (!response.ok) {
+    throw new Error('Upload gambar gagal.')
+  }
+
+  return upload.publicUrl
 }
 
 /* Ambil notifikasi dari backend untuk halaman list notifikasi */
@@ -286,9 +366,9 @@ export async function deletePost(postId: string, token: string) {
 
 /** Ambil detail satu postingan */
 export async function fetchPostDetail(postId: string) {
-  const res = await fetch(`${apiBaseUrl}/posts/${postId}`)
-  if (!res.ok) throw new Error('Postingan tidak ditemukan')
-  return res.json()
+  return apiRequest<{ post: FeedPost }>(`/posts/${postId}`, {
+    token: getStoredSession()?.token,
+  })
 }
 
 export { apiBaseUrl }

@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import type { FeedPost, PublicUser } from '@ppwl/shared'
+import { useQuery } from '@tanstack/react-query'
 import { PostDetailPage } from '@/routes/posts/PostDetailPage'
 import { fetchFeed } from '@/services/api'
+import { navigate } from '@/lib/navigation'
+import { useFeedStore } from '@/stores'
 import { CreatePostBox } from './components/CreatePostBox'
-import { LeftSidebar, RightSidebar } from './components/HomeSidebars'
-import { HomeTopbar } from './components/HomeTopbar'
+import { HomeTopBar } from './components/HomeTopBar'
 import { PostCard } from './components/PostCard'
-import { Stories } from './components/Stories'
+
+const FEED_REALTIME_INTERVAL_MS = 3000
+const FEED_PAGE_SIZE = 50
 
 type HomePageProps = {
   currentUser?: PublicUser | null
@@ -25,67 +29,114 @@ function Composer({ currentUser, onPostCreated }: { currentUser?: PublicUser | n
 }
 
 function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
-  const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
+  const feedPosts = useFeedStore((state) => state.posts)
+  const setFeedPosts = useFeedStore((state) => state.setPosts)
+  const addFeedPost = useFeedStore((state) => state.addPost)
+  const updateFeedPost = useFeedStore((state) => state.updatePost)
+  const deleteFeedPost = useFeedStore((state) => state.deletePost)
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null)
   const [shouldFocusComment, setShouldFocusComment] = useState(false)
-  const [isLoadingFeed, setIsLoadingFeed] = useState(true)
-  const [feedError, setFeedError] = useState<string | null>(null)
+  const feedQuery = useQuery({
+    queryKey: ['feed', currentUser?.id],
+    queryFn: () => fetchFeed(1, FEED_PAGE_SIZE),
+    enabled: Boolean(currentUser?.id),
+    refetchInterval: FEED_REALTIME_INTERVAL_MS,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+  })
+  const refetchFeed = feedQuery.refetch
 
   useEffect(() => {
-    let isMounted = true
+    if (feedQuery.data?.posts) {
+      setFeedPosts(feedQuery.data.posts)
+    }
+  }, [feedQuery.data?.posts, setFeedPosts])
 
-    fetchFeed()
-      .then((response) => {
-        if (!isMounted) return
-        setFeedPosts(response.posts)
-        setFeedError(null)
-      })
-      .catch(() => {
-        if (!isMounted) return
-        setFeedError('Gagal memuat postingan dari backend.')
-      })
-      .finally(() => {
-        if (!isMounted) return
-        setIsLoadingFeed(false)
-      })
+  useEffect(() => {
+    const handleRealtimeFeedChange = () => {
+      void refetchFeed()
+    }
+
+    window.addEventListener('fakebook:feed-changed', handleRealtimeFeedChange)
 
     return () => {
-      isMounted = false
+      window.removeEventListener('fakebook:feed-changed', handleRealtimeFeedChange)
     }
-  }, [])
+  }, [refetchFeed])
 
-  function handleLikeCountChange(postId: string, nextLikeCount: number) {
-    setFeedPosts((currentPosts) =>
-      currentPosts.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              _count: {
-                ...post._count,
-                likes: nextLikeCount,
-              },
-            }
-          : post,
-      ),
+  useEffect(() => {
+    setSelectedPost((currentPost) => {
+      if (!currentPost) return currentPost
+      return feedPosts.find((post) => post.id === currentPost.id) ?? currentPost
+    })
+  }, [feedPosts])
+
+  const isLoadingFeed = feedQuery.isLoading && feedPosts.length === 0
+  const feedError = feedQuery.isError ? 'Gagal memuat postingan dari backend.' : null
+
+  function handleLikeStatusChange(postId: string, nextLikeCount: number, nextLiked: boolean) {
+    const currentPost = feedPosts.find((post) => post.id === postId)
+    if (currentPost) {
+      updateFeedPost({
+        ...currentPost,
+        likes: currentUser?.id && nextLiked ? [{ userId: currentUser.id }] : [],
+        _count: {
+          ...currentPost._count,
+          likes: nextLikeCount,
+        },
+      })
+    }
+    setSelectedPost((currentPost) =>
+      currentPost?.id === postId
+        ? {
+            ...currentPost,
+            likes: currentUser?.id && nextLiked ? [{ userId: currentUser.id }] : [],
+            _count: {
+              ...currentPost._count,
+              likes: nextLikeCount,
+            },
+          }
+        : currentPost,
+    )
+  }
+
+  function handleCommentCountChange(postId: string, nextCommentCount: number) {
+    const currentPost = feedPosts.find((post) => post.id === postId)
+    if (currentPost) {
+      updateFeedPost({
+        ...currentPost,
+        _count: {
+          ...currentPost._count,
+          comments: nextCommentCount,
+        },
+      })
+    }
+    setSelectedPost((currentPost) =>
+      currentPost?.id === postId
+        ? {
+            ...currentPost,
+            _count: {
+              ...currentPost._count,
+              comments: nextCommentCount,
+            },
+          }
+        : currentPost,
     )
   }
 
   function handlePostUpdated(updatedPost: FeedPost) {
-    setFeedPosts((currentPosts) =>
-      currentPosts.map((post) => post.id === updatedPost.id ? updatedPost : post),
-    )
+    updateFeedPost(updatedPost)
     setSelectedPost((currentPost) => currentPost?.id === updatedPost.id ? updatedPost : currentPost)
   }
 
   function handlePostDeleted(postId: string) {
-    setFeedPosts((currentPosts) => currentPosts.filter((post) => post.id !== postId))
+    deleteFeedPost(postId)
     setSelectedPost((currentPost) => currentPost?.id === postId ? null : currentPost)
   }
 
   return (
     <main className="mx-auto w-full max-w-[680px] space-y-4 px-3 pb-10">
-      <Stories />
-      <Composer currentUser={currentUser} onPostCreated={(post) => setFeedPosts((currentPosts) => [post, ...currentPosts])} />
+      <Composer currentUser={currentUser} onPostCreated={addFeedPost} />
 
       {isLoadingFeed ? (
         <div className="rounded-xl bg-white p-8 text-center text-sm font-medium text-gray-500 shadow-sm ring-1 ring-gray-200">
@@ -105,13 +156,14 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
             key={post.id}
             post={post}
             currentUser={currentUser}
-            onLikeCountChange={handleLikeCountChange}
+            onLikeStatusChange={handleLikeStatusChange}
             onPostUpdated={handlePostUpdated}
             onPostDeleted={handlePostDeleted}
             onOpenDetail={() => {
               setShouldFocusComment(false)
               setSelectedPost(post)
             }}
+            onOpenAuthor={() => navigate(`/users/${post.author.id}`)}
             onOpenComments={() => {
               setShouldFocusComment(true)
               setSelectedPost(post)
@@ -124,8 +176,9 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
         <PostDetailPage
           key={selectedPost.id}
           post={selectedPost}
-          comments={[]}
           autoFocusComment={shouldFocusComment}
+          onCommentCountChange={(nextCommentCount) => handleCommentCountChange(selectedPost.id, nextCommentCount)}
+          onLikeStatusChange={(nextLikeCount, nextLiked) => handleLikeStatusChange(selectedPost.id, nextLikeCount, nextLiked)}
           onClose={() => setSelectedPost(null)}
         />
       )}
@@ -136,11 +189,9 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
 export function HomePage({ currentUser }: HomePageProps) {
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-gray-900">
-      <HomeTopbar currentUser={currentUser} />
-      <div className="mx-auto flex max-w-[1460px] gap-4 pt-16">
-        <LeftSidebar currentUser={currentUser} />
+      <HomeTopBar currentPath="/home" currentUser={currentUser} />
+      <div className="mx-auto flex max-w-[760px] justify-center pt-16">
         <Feed currentUser={currentUser} />
-        <RightSidebar />
       </div>
     </div>
   )

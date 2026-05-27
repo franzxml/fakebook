@@ -6,8 +6,10 @@ import { errorPayload } from '../../http/errors'
 const publicUserSelect = {
   id: true,
   name: true,
+  username: true,
   email: true,
   avatarUrl: true,
+  bio: true,
 } as const
 
 const notificationInclude = {

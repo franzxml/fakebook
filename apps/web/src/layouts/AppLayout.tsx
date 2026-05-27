@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Home, Bell, Users, User, LogOut } from 'lucide-react'
 import type { PublicUser } from '@ppwl/shared'
 import { navigate } from '@/lib/navigation'
+import { getDisplayName } from '@/lib/userDisplay'
 
 type AppLayoutProps = {
   children: ReactNode
@@ -25,9 +26,7 @@ const navItems: NavItem[] = [
 
 export function AppLayout({ children, aside, currentUser, currentPath = '' }: AppLayoutProps) {
   // Mengambil title secara dinamis dari <title> yang ada di apps/web/index.html.
-  const siteTitle = typeof document !== 'undefined' ? document.title : 'Facebook'
-  
-  const logoText = siteTitle.split(' ').pop()?.toLowerCase() || 'facebook'
+  const siteTitle = typeof document !== 'undefined' ? document.title : 'Fakebook'
 
   return (
     <div className="min-h-screen bg-[#f0f2f5]">
@@ -37,10 +36,19 @@ export function AppLayout({ children, aside, currentUser, currentPath = '' }: Ap
           {/* Logo Dinamis berdasarkan index.html */}
           <button
             onClick={() => navigate('/home')}
-            className="text-2xl font-extrabold tracking-tight text-[#1877f2] select-none lowercase"
+            className="flex items-center gap-2 rounded-xl pr-2 text-[#1877f2] transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1877f2]"
             title={siteTitle}
+            aria-label={siteTitle}
           >
-            {logoText}
+            <span
+              aria-hidden="true"
+              className="flex size-10 items-center justify-center rounded-xl bg-[#0866ff] text-[17px] font-black leading-none tracking-normal text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.14)]"
+            >
+              fk
+            </span>
+            <span className="hidden text-xl font-extrabold tracking-normal sm:inline">
+              Fakebook
+            </span>
           </button>
 
           {/* Nav tengah */}
@@ -75,7 +83,7 @@ export function AppLayout({ children, aside, currentUser, currentPath = '' }: Ap
                 >
                   <AvatarCircle user={currentUser} size="sm" />
                   <span className="hidden md:block text-sm font-medium text-slate-800 max-w-[120px] truncate">
-                    {currentUser.name}
+                    {getDisplayName(currentUser)}
                   </span>
                 </button>
                 <button
@@ -141,7 +149,7 @@ export function AppLayout({ children, aside, currentUser, currentPath = '' }: Ap
 
 // ===== Komponen Avatar =====
 type AvatarProps = {
-  user: Pick<PublicUser, 'name' | 'avatarUrl'>
+  user: Pick<PublicUser, 'name' | 'username' | 'avatarUrl'>
   size?: 'sm' | 'md' | 'lg'
 }
 
@@ -152,7 +160,8 @@ export function AvatarCircle({ user, size = 'md' }: AvatarProps) {
     lg: 'h-12 w-12 text-base',
   }[size]
 
-  const initials = (user.name || 'U')
+  const displayName = getDisplayName(user)
+  const initials = displayName
     .trim()
     .split(/\s+/)
     .slice(0, 2)
@@ -164,7 +173,7 @@ export function AvatarCircle({ user, size = 'md' }: AvatarProps) {
     return (
       <img
         src={user.avatarUrl}
-        alt={user.name || 'User'}
+        alt={displayName}
         className={`${sizeClass} rounded-full object-cover bg-slate-200`}
       />
     )

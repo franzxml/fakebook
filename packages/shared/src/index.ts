@@ -8,8 +8,10 @@ export type ApiHealth = {
 export type PublicUser = {
   id: string
   name: string
+  username: string | null
   email: string
   avatarUrl: string | null
+  bio: string | null
 }
 
 export type SessionPayload = {
@@ -31,6 +33,9 @@ export type FeedPost = {
     imageUrl: string
     createdAt: string
   }[]
+  likes?: {
+    userId: string
+  }[]
   createdAt: string
   updatedAt: string
   _count: {
@@ -39,7 +44,7 @@ export type FeedPost = {
   }
 }
 
-export type NotificationType = 'post_like' | 'post_comment'
+export type NotificationType = 'post_like' | 'post_comment' | 'comment_reply'
 
 export type AppNotification = {
   id: string
@@ -69,7 +74,7 @@ export type MarkNotificationsReadResponse = {
 }
 
 export const appMetadata = {
-  name: 'Facebook',
+  name: 'Fakebook',
   version: '0.1.0',
 } as const
 
