@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Camera, Check, Eye, EyeOff, KeyRound, Loader2, Mail, Save, Shield, User } from 'lucide-react'
-import { apiRequest, getStoredUser } from '@/services/api'
-import { navigate, notifyAuthStorageChanged } from '@/lib/navigation'
+import { Camera, Check, Eye, EyeOff, KeyRound, Loader2, Mail, Save, User } from 'lucide-react'
+import { apiRequest, getStoredUser, uploadImageFile } from '@/services/api'
+import { notifyAuthStorageChanged } from '@/lib/navigation'
+import { HomeTopBar } from '@/routes/home/components/HomeTopBar'
 import type { PublicUser } from '@/types/social'
 
 type ProfileResponse = {
@@ -75,29 +76,6 @@ function StatusMessage({ message }: { message: { ok: boolean; text: string } | n
   )
 }
 
-function Topbar({ currentUser }: { currentUser: PublicUser | null }) {
-  return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
-      <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4">
-        <button
-          type="button"
-          onClick={() => navigate('/home')}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-3xl font-black text-white"
-        >
-          f
-        </button>
-        <button
-          type="button"
-          className="rounded-full bg-gray-100 p-1 hover:bg-gray-200"
-          aria-label="Profil"
-        >
-          <AvatarPreview avatarUrl={currentUser?.avatarUrl ?? null} name={currentUser?.name ?? 'Facebook'} size="h-9 w-9" />
-        </button>
-      </div>
-    </header>
-  )
-}
-
 export function ProfilePage() {
   const [token] = useState(getToken)
   const [storedUser, setStoredUser] = useState<PublicUser | null>(() => getStoredUser())
@@ -109,8 +87,12 @@ export function ProfilePage() {
   )
 
   const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
+  const [bio, setBio] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null)
   const [savingProfile, setSavingProfile] = useState(false)
   const [profileMsg, setProfileMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -121,6 +103,24 @@ export function ProfilePage() {
   const [savingPassword, setSavingPassword] = useState(false)
   const [passwordMsg, setPasswordMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
+  function handleAvatarFileChange(file: File | undefined) {
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setProfileMsg({ ok: false, text: 'File avatar harus berupa gambar.' })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileMsg({ ok: false, text: 'Ukuran avatar maksimal 5 MB.' })
+      return
+    }
+
+    setAvatarFile(file)
+    setAvatarPreviewUrl(URL.createObjectURL(file))
+    setProfileMsg(null)
+  }
+
   useEffect(() => {
     if (!token) return
 
@@ -128,7 +128,9 @@ export function ProfilePage() {
       .then((res) => {
         setProfile(res.profile)
         setName(res.profile.name)
+        setUsername(res.profile.username ?? '')
         setEmail(res.profile.email)
+        setBio(res.profile.bio ?? '')
         setAvatarUrl(res.profile.avatarUrl ?? '')
         setStoredUser(res.profile)
       })
@@ -144,18 +146,24 @@ export function ProfilePage() {
     setProfileMsg(null)
 
     try {
+      const nextAvatarUrl = avatarFile ? await uploadImageFile(avatarFile, 'avatars', token) : avatarUrl
       const res = await apiRequest<UpdateProfileResponse>('/profile', {
         method: 'PATCH',
         token,
         body: {
           name: name.trim() !== profile.name ? name.trim() : undefined,
+          username: username.trim() !== (profile.username ?? '') ? username.trim() : undefined,
+          bio: bio.trim() !== (profile.bio ?? '') ? bio.trim() : undefined,
           email: email !== profile.email ? email : undefined,
-          avatarUrl: avatarUrl !== (profile.avatarUrl ?? '') ? avatarUrl || null : undefined,
+          avatarUrl: nextAvatarUrl !== (profile.avatarUrl ?? '') ? nextAvatarUrl || null : undefined,
         },
       })
       const nextProfile = { ...profile, ...res.user }
       setProfile(nextProfile)
       setStoredUser(res.user)
+      setAvatarFile(null)
+      setAvatarPreviewUrl(null)
+      setAvatarUrl(res.user.avatarUrl ?? '')
       localStorage.setItem('user', JSON.stringify(res.user))
       notifyAuthStorageChanged()
       setProfileMsg({ ok: true, text: 'Profil berhasil diperbarui.' })
@@ -207,36 +215,23 @@ export function ProfilePage() {
     )
   }
 
-  const previewAvatar = avatarUrl || null
+  const previewAvatar = avatarPreviewUrl || avatarUrl || null
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-gray-950">
-      <Topbar currentUser={storedUser ?? profile} />
+      <HomeTopBar currentPath="/profile" currentUser={storedUser ?? profile} />
 
       <main className="mx-auto max-w-[980px] px-4 pb-12 pt-14">
-        <section className="overflow-hidden rounded-b-xl bg-white shadow-sm">
-          <div className="h-56 bg-gradient-to-br from-gray-300 via-gray-200 to-blue-200" />
-          <div className="px-6 pb-5">
-            <div className="-mt-16 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end">
-                <div className="relative">
-                  <AvatarPreview avatarUrl={profile.avatarUrl} name={profile.name} />
-                  <button className="absolute bottom-2 right-2 grid h-10 w-10 place-items-center rounded-full bg-gray-200 text-gray-800 shadow hover:bg-gray-300">
-                    <Camera size={20} />
-                  </button>
-                </div>
-                <div className="pb-2">
-                  <h1 className="text-3xl font-bold tracking-tight">{profile.name}</h1>
-                  <p className="mt-1 text-sm font-medium text-gray-500">{profile.email}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => document.getElementById('edit-profile-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                className="mb-2 rounded-md bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-700"
-              >
-                Edit profil
-              </button>
+        <section className="bg-white px-6 py-5 shadow-sm">
+          <div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">{profile.name}</h1>
+              <p className="mt-1 text-sm font-semibold text-gray-600">
+                @{profile.username ?? 'username'}
+              </p>
+              {profile.bio ? (
+                <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-gray-600">{profile.bio}</p>
+              ) : null}
             </div>
 
             <div className="mt-5 grid grid-cols-3 border-t border-gray-200 pt-4 text-center">
@@ -256,35 +251,40 @@ export function ProfilePage() {
           </div>
         </section>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-          <aside className="space-y-4">
-            <section className="rounded-xl bg-white p-5 shadow-sm">
-              <h2 className="text-xl font-bold">Intro</h2>
-              <div className="mt-4 space-y-3 text-sm text-gray-700">
-                <p className="flex items-center gap-2"><User size={18} className="text-gray-500" /> {profile.name}</p>
-                <p className="flex items-center gap-2"><Mail size={18} className="text-gray-500" /> {profile.email}</p>
-                <p className="flex items-center gap-2"><Shield size={18} className="text-gray-500" /> Akun aktif</p>
-              </div>
-            </section>
-          </aside>
-
+        <div className="mt-4">
           <div className="space-y-4">
             <section className="rounded-xl bg-white p-5 shadow-sm" id="edit-profile-form">
               <h2 className="text-xl font-bold">Edit profil</h2>
-              <p className="mt-1 text-sm text-gray-500">Ubah nama, foto profil, dan email akun.</p>
+              <p className="mt-1 text-sm text-gray-500">Ubah nama, username, bio, foto profil, dan email akun.</p>
 
               <form onSubmit={handleSaveProfile} className="mt-5 space-y-4">
                 <div className="flex items-center gap-4 rounded-xl bg-gray-50 p-4">
                   <AvatarPreview avatarUrl={previewAvatar} name={name || profile.name} size="h-20 w-20" />
-                  <Field label="Avatar URL" icon={<Camera size={16} />}>
-                    <input
-                      type="url"
-                      value={avatarUrl}
-                      onChange={(e) => setAvatarUrl(e.target.value)}
-                      placeholder="https://example.com/foto.jpg"
-                      className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
-                  </Field>
+                  <div className="flex-1 space-y-3">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-gray-200 px-4 py-2 text-sm font-bold text-gray-900 hover:bg-gray-300">
+                      <Camera size={16} />
+                      Upload foto
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => handleAvatarFileChange(event.target.files?.[0])}
+                      />
+                    </label>
+                    <Field label="Avatar URL" icon={<Camera size={16} />}>
+                      <input
+                        type="url"
+                        value={avatarUrl}
+                        onChange={(e) => {
+                          setAvatarFile(null)
+                          setAvatarPreviewUrl(null)
+                          setAvatarUrl(e.target.value)
+                        }}
+                        placeholder="https://example.com/foto.jpg"
+                        className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      />
+                    </Field>
+                  </div>
                 </div>
 
                 <Field label="Nama" icon={<User size={16} />}>
@@ -295,6 +295,28 @@ export function ProfilePage() {
                     minLength={1}
                     required
                     className="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </Field>
+
+                <Field label="Username" icon={<User size={16} />}>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                    minLength={3}
+                    required
+                    className="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </Field>
+
+                <Field label="Bio" icon={<User size={16} />}>
+                  <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    rows={3}
+                    maxLength={160}
+                    placeholder="Tulis sedikit tentang diri Anda."
+                    className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </Field>
 

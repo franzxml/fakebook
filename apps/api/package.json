@@ -11,6 +11,10 @@
     "prisma": "prisma"
   },
   "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.1054.0",
+    "@aws-sdk/client-dynamodb": "^3.1054.0",
+    "@aws-sdk/client-s3": "^3.1054.0",
+    "@aws-sdk/s3-request-presigner": "^3.1054.0",
     "@elysiajs/cors": "^1.4.2",
     "@libsql/client": "^0.17.3",
     "@ppwl/shared": "workspace:*",

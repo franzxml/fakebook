@@ -7,6 +7,7 @@ export const routePaths = {
   notifications: '/notifications',
   profile: '/profile',
   users: '/users',
+  publicUserProfile: '/users/:userId',
 } as const
 
 export { ForgotPasswordPage, LoginPage, RegisterPage } from './auth'
@@ -14,4 +15,4 @@ export { HomePage } from './home'
 export { NotificationsPage } from './notifications'
 export { PostDetailPage } from './posts'
 export { ProfilePage } from './profile'
-export { UsersPage } from './users'
+export { PublicUserProfilePage, UsersPage } from './users'

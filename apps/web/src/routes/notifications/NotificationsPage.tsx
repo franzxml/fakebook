@@ -1,11 +1,11 @@
-import { Bell, CheckCheck, Grid3X3, MessageCircle, MoreHorizontal, Search, ThumbsUp } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { apiRequest, fetchNotifications, getStoredSession, getStoredUser } from '@/services/api'
+import { Bell, CheckCheck, MessageCircle, MoreHorizontal, ThumbsUp } from 'lucide-react'
+import { useState } from 'react'
+import { getStoredSession } from '@/services/api'
+import { HomeTopBar } from '@/routes/home/components/HomeTopBar'
+import { getNotificationContent, getNotificationKind } from '@/lib/notificationDisplay'
+import { getDisplayName } from '@/lib/userDisplay'
+import { useAuthStore, useNotificationStore } from '@/stores'
 import type { AppNotification, PublicUser } from '@/types/social'
-import type {
-  MarkNotificationsReadResponse,
-  NotificationResponse,
-} from '@ppwl/shared'
 
 type NotificationsPageProps = {
   notifications: AppNotification[]
@@ -30,33 +30,6 @@ function getStoredToken() {
   return null
 }
 
-function getNotificationText(notification: AppNotification) {
-  const actorName = notification.actor?.name ?? 'Seseorang'
-
-  if (notification.type === 'post_like') {
-    return (
-      <>
-        <strong>{actorName}</strong> menyukai postingan Anda.
-      </>
-    )
-  }
-
-  if (notification.type === 'post_comment') {
-    return (
-      <>
-        <strong>{actorName}</strong> mengomentari postingan Anda
-        {notification.post?.content ? <>: {notification.post.content}</> : '.'}
-      </>
-    )
-  }
-
-  return (
-    <>
-      <strong>{actorName}</strong> berinteraksi dengan postingan Anda.
-    </>
-  )
-}
-
 function getRelativeTime(value: string) {
   const diffMs = Date.now() - new Date(value).getTime()
   const diffMinutes = Math.max(Math.floor(diffMs / 60000), 0)
@@ -77,7 +50,7 @@ function isRecentNotification(notification: AppNotification) {
 }
 
 function Avatar({ user }: { user: PublicUser | null }) {
-  const initial = user?.name?.charAt(0).toUpperCase() || 'F'
+  const initial = getDisplayName(user).charAt(0).toUpperCase()
 
   if (user?.avatarUrl) {
     return <img src={user.avatarUrl} alt="" className="h-14 w-14 rounded-full object-cover" />
@@ -91,44 +64,13 @@ function Avatar({ user }: { user: PublicUser | null }) {
 }
 
 function NotificationBadge({ type }: { type: string }) {
-  const isComment = type === 'post_comment'
+  const isComment = getNotificationKind({ type }) === 'comment'
   const Icon = isComment ? MessageCircle : ThumbsUp
 
   return (
     <span className={`absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white text-white ${isComment ? 'bg-blue-600' : 'bg-[#1877f2]'}`}>
       <Icon size={15} fill="currentColor" />
     </span>
-  )
-}
-
-function Topbar({ currentUser }: { currentUser: PublicUser | null }) {
-  return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
-      <div className="flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <a href="/home" className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-3xl font-black text-white">
-            f
-          </a>
-          <div className="hidden h-10 w-64 items-center gap-2 rounded-full bg-gray-100 px-4 text-gray-500 md:flex">
-            <Search size={18} />
-            <span className="text-sm">Cari di Facebook</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button className="grid h-10 w-10 place-items-center rounded-full bg-gray-100 text-gray-900 hover:bg-gray-200">
-            <Grid3X3 size={20} />
-          </button>
-          <button className="grid h-10 w-10 place-items-center rounded-full bg-gray-100 text-gray-900 hover:bg-gray-200">
-            <MessageCircle size={20} fill="currentColor" />
-          </button>
-          <button className="grid h-10 w-10 place-items-center rounded-full bg-blue-100 text-blue-600">
-            <Bell size={20} fill="currentColor" />
-          </button>
-          <Avatar user={currentUser} />
-        </div>
-      </div>
-    </header>
   )
 }
 
@@ -156,7 +98,7 @@ function NotificationItem({
       </span>
       <span className="min-w-0 flex-1">
         <span className="line-clamp-3 text-[15px] leading-tight text-gray-950">
-          {getNotificationText(notification)}
+          {getNotificationContent(notification)}
         </span>
         <span className="mt-1 block text-sm font-semibold text-blue-600">
           {getRelativeTime(notification.createdAt)}
@@ -169,97 +111,32 @@ function NotificationItem({
 
 export function NotificationsPage({ notifications, token }: NotificationsPageProps) {
   const authToken = token ?? getStoredToken()
-  const currentUser = getStoredUser()
-  const [items, setItems] = useState<AppNotification[]>(notifications)
+  const currentUser = useAuthStore((state) => state.user)
+  const storeItems = useNotificationStore((state) => state.notifications)
+  const unreadCount = useNotificationStore((state) => state.unreadCount)
+  const isLoading = useNotificationStore((state) => state.isLoading)
+  const isUpdating = useNotificationStore((state) => state.isUpdating)
+  const error = useNotificationStore((state) => state.error)
+  const markNotificationAsRead = useNotificationStore((state) => state.markAsRead)
+  const markEveryNotificationAsRead = useNotificationStore((state) => state.markAllAsRead)
+  const items = storeItems.length > 0 ? storeItems : notifications
   const [mode, setMode] = useState<FilterMode>('all')
-  const [isLoading, setIsLoading] = useState(true)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let isActive = true
-
-    if (!authToken) {
-      setItems([])
-      setIsLoading(false)
-      setError('Login untuk melihat notifikasi akun Anda.')
-      return () => {
-        isActive = false
-      }
-    }
-
-    fetchNotifications(authToken)
-      .then((response) => {
-        if (!isActive) return
-        setItems(response.notifications)
-        setError(null)
-      })
-      .catch(() => {
-        if (!isActive) return
-        setError('Notifikasi belum bisa dimuat dari server.')
-      })
-      .finally(() => {
-        if (!isActive) return
-        setIsLoading(false)
-      })
-
-    return () => {
-      isActive = false
-    }
-  }, [authToken])
-
-  const unreadCount = useMemo(() => items.filter((notification) => !notification.isRead).length, [items])
   const filteredItems = mode === 'unread' ? items.filter((notification) => !notification.isRead) : items
   const newItems = filteredItems.filter(isRecentNotification)
   const previousItems = filteredItems.filter((notification) => !isRecentNotification(notification))
 
   async function markAsRead(notificationId: string) {
-    if (!authToken) return
-
-    setIsUpdating(true)
-    setError(null)
-
-    try {
-      const response = await apiRequest<NotificationResponse>(`/notifications/${notificationId}/read`, {
-        method: 'PATCH',
-        token: authToken,
-      })
-
-      setItems((currentItems) =>
-        currentItems.map((notification) =>
-          notification.id === notificationId ? response.notification : notification,
-        ),
-      )
-    } catch {
-      setError('Notifikasi gagal ditandai sebagai dibaca.')
-    } finally {
-      setIsUpdating(false)
-    }
+    await markNotificationAsRead(notificationId, authToken)
   }
 
   async function markAllAsRead() {
-    if (!authToken || unreadCount === 0) return
-
-    setIsUpdating(true)
-    setError(null)
-
-    try {
-      await apiRequest<MarkNotificationsReadResponse>('/notifications/read-all', {
-        method: 'PATCH',
-        token: authToken,
-      })
-
-      setItems((currentItems) => currentItems.map((notification) => ({ ...notification, isRead: true })))
-    } catch {
-      setError('Semua notifikasi gagal ditandai sebagai dibaca.')
-    } finally {
-      setIsUpdating(false)
-    }
+    await markEveryNotificationAsRead(authToken)
   }
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-gray-950">
-      <Topbar currentUser={currentUser} />
+      <HomeTopBar currentPath="/notifications" currentUser={currentUser} />
       <main className="mx-auto flex max-w-[1180px] justify-start px-4 pt-20">
         <section className="w-full max-w-[430px] rounded-xl bg-white p-4 shadow-lg ring-1 ring-gray-200">
           <div className="flex items-center justify-between">

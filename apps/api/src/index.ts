@@ -7,6 +7,7 @@ import { commentRoutes } from './routes/comments'
 import { notificationRoutes } from './routes/notifications'
 import { postRoutes } from './routes/posts'
 import { profileRoutes } from './routes/profile'
+import { uploadRoutes } from './routes/uploads'
 import { userRoutes } from './routes/users'
 
 const port = Number(process.env.PORT ?? 3000)
@@ -27,6 +28,11 @@ app
       return { error: 'Data request tidak valid.' }
     }
 
+    if (code === 'NOT_FOUND') {
+      set.status = 404
+      return { error: 'Endpoint tidak ditemukan.' }
+    }
+
     console.error(error)
     set.status = 500
     return { error: 'Terjadi kesalahan server.' }
@@ -40,6 +46,7 @@ app
       comments: '/comments',
       notifications: '/notifications',
       profile: '/profile',
+      uploads: '/uploads',
       users: '/users',
     },
   }))
@@ -53,6 +60,7 @@ app
   .use(commentRoutes)
   .use(notificationRoutes)
   .use(profileRoutes)
+  .use(uploadRoutes)
   .use(userRoutes)
   .listen(port)
 

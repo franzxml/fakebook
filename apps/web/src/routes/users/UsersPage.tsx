@@ -1,37 +1,86 @@
-import { UserRoundPlus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { AppLayout } from '@/layouts/AppLayout'
+import { useEffect, useState } from 'react'
 import type { PublicUser } from '@/types/social'
+import { fetchUsers, getStoredUser } from '@/services/api'
+import { HomeTopBar } from '@/routes/home/components/HomeTopBar'
+import { getDisplayName } from '@/lib/userDisplay'
+import { navigate } from '@/lib/navigation'
 
 type UsersPageProps = {
   users: PublicUser[]
 }
 
 export function UsersPage({ users }: UsersPageProps) {
+  const [allUsers, setAllUsers] = useState<PublicUser[]>(users)
+  const [isLoading, setIsLoading] = useState(users.length === 0)
+  const [error, setError] = useState<string | null>(null)
+  const currentUser = getStoredUser()
+
+  useEffect(() => {
+    let isMounted = true
+
+    fetchUsers()
+      .then((response) => {
+        if (!isMounted) return
+        setAllUsers(response.users)
+        setError(null)
+      })
+      .catch(() => {
+        if (!isMounted) return
+        setError('Gagal memuat daftar pengguna.')
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setIsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   return (
-    <AppLayout>
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-lg font-semibold text-slate-950">Teman</h1>
-        <div className="mt-4 divide-y divide-slate-100">
-          {users.map((user) => (
-            <article key={user.id} className="flex items-center justify-between gap-3 py-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-slate-200 font-semibold text-slate-700">
-                  {user.name.charAt(0)}
-                </div>
-                <div className="min-w-0">
-                  <h2 className="truncate text-sm font-semibold text-slate-950">{user.name}</h2>
-                  <p className="truncate text-sm text-slate-500">{user.email}</p>
-                </div>
-              </div>
-              <Button variant="secondary" className="shrink-0 gap-2">
-                <UserRoundPlus className="size-4" aria-hidden="true" />
-                Tambah
-              </Button>
-            </article>
-          ))}
-        </div>
-      </section>
-    </AppLayout>
+    <div className="min-h-screen bg-[#f0f2f5] text-gray-900">
+      <HomeTopBar currentPath="/users" currentUser={currentUser} />
+      <main className="mx-auto w-full max-w-[760px] px-3 pb-10 pt-16">
+        <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+          <h1 className="text-xl font-bold text-gray-900">Pengguna Fakebook</h1>
+
+          {isLoading ? (
+            <p className="mt-5 text-sm font-medium text-gray-500">Memuat pengguna...</p>
+          ) : error ? (
+            <p className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{error}</p>
+          ) : allUsers.length === 0 ? (
+            <p className="mt-5 text-sm font-medium text-gray-500">Belum ada pengguna.</p>
+          ) : (
+            <div className="mt-4 divide-y divide-gray-100">
+              {allUsers.map((user) => {
+                const displayName = getDisplayName(user)
+
+                return (
+                  <button
+                    key={user.id}
+                    type="button"
+                    className="flex w-full items-center gap-3 py-3 text-left transition hover:bg-gray-50"
+                    onClick={() => navigate(`/users/${user.id}`)}
+                  >
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt="" className="size-11 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gray-200 font-semibold text-gray-700">
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <h2 className="truncate text-sm font-bold text-gray-900">{displayName}</h2>
+                      {user.bio ? <p className="mt-1 line-clamp-2 text-xs font-medium text-gray-500">{user.bio}</p> : null}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
   )
 }

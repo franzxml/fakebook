@@ -1,22 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { CheckCheck, MessageCircle, MoreHorizontal, ThumbsUp } from 'lucide-react'
-import type { MarkNotificationsReadResponse, NotificationResponse, PublicUser } from '@ppwl/shared'
-import { apiRequest, fetchNotifications, getStoredSession } from '@/services/api'
+import type { PublicUser } from '@ppwl/shared'
+import { getStoredSession } from '@/services/api'
+import { getDisplayName } from '@/lib/userDisplay'
+import { getNotificationKind, getNotificationText } from '@/lib/notificationDisplay'
+import { useNotificationStore } from '@/stores'
 import type { AppNotification } from '@/types/social'
-
-function getNotificationText(notification: AppNotification) {
-  const actorName = notification.actor?.name ?? 'Seseorang'
-
-  if (notification.type === 'post_like') {
-    return `${actorName} menyukai postingan Anda.`
-  }
-
-  if (notification.type === 'post_comment') {
-    return `${actorName} mengomentari postingan Anda${notification.post?.content ? `: ${notification.post.content}` : '.'}`
-  }
-
-  return `${actorName} berinteraksi dengan postingan Anda.`
-}
 
 function getRelativeTime(value: string) {
   const diffMinutes = Math.max(Math.floor((Date.now() - new Date(value).getTime()) / 60000), 0)
@@ -36,93 +25,32 @@ function isRecentNotification(notification: AppNotification) {
 
 export function NotificationDropdown({ currentUser }: { currentUser?: PublicUser | null }) {
   const token = getStoredSession()?.token
-  const [items, setItems] = useState<AppNotification[]>([])
+  const items = useNotificationStore((state) => state.notifications)
+  const unreadCount = useNotificationStore((state) => state.unreadCount)
+  const isLoading = useNotificationStore((state) => state.isLoading)
+  const isUpdating = useNotificationStore((state) => state.isUpdating)
+  const error = useNotificationStore((state) => state.error)
+  const markNotificationAsRead = useNotificationStore((state) => state.markAsRead)
+  const markEveryNotificationAsRead = useNotificationStore((state) => state.markAllAsRead)
   const [mode, setMode] = useState<'all' | 'unread'>('all')
-  const [isLoading, setIsLoading] = useState(true)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let isMounted = true
-
-    if (!token) {
-      setItems([])
-      setError('Login untuk melihat notifikasi akun Anda.')
-      setIsLoading(false)
-      return () => {
-        isMounted = false
-      }
-    }
-
-    fetchNotifications(token)
-      .then((response) => {
-        if (!isMounted) return
-        setItems(response.notifications)
-        setError(null)
-      })
-      .catch(() => {
-        if (!isMounted) return
-        setError('Notifikasi belum bisa dimuat dari server.')
-      })
-      .finally(() => {
-        if (!isMounted) return
-        setIsLoading(false)
-      })
-
-    return () => {
-      isMounted = false
-    }
-  }, [token])
-
-  const unreadCount = items.filter((notification) => !notification.isRead).length
   const filteredItems = mode === 'unread' ? items.filter((notification) => !notification.isRead) : items
   const newItems = filteredItems.filter(isRecentNotification)
   const previousItems = filteredItems.filter((notification) => !isRecentNotification(notification))
 
   async function markAsRead(notificationId: string) {
-    if (!token) return
-
-    setIsUpdating(true)
-    setError(null)
-
-    try {
-      const response = await apiRequest<NotificationResponse>(`/notifications/${notificationId}/read`, {
-        method: 'PATCH',
-        token,
-      })
-      setItems((currentItems) =>
-        currentItems.map((notification) => notification.id === notificationId ? response.notification : notification),
-      )
-    } catch {
-      setError('Notifikasi gagal ditandai sebagai dibaca.')
-    } finally {
-      setIsUpdating(false)
-    }
+    await markNotificationAsRead(notificationId, token ?? null)
   }
 
   async function markAllAsRead() {
-    if (!token || unreadCount === 0) return
-
-    setIsUpdating(true)
-    setError(null)
-
-    try {
-      await apiRequest<MarkNotificationsReadResponse>('/notifications/read-all', {
-        method: 'PATCH',
-        token,
-      })
-      setItems((currentItems) => currentItems.map((notification) => ({ ...notification, isRead: true })))
-    } catch {
-      setError('Semua notifikasi gagal ditandai sebagai dibaca.')
-    } finally {
-      setIsUpdating(false)
-    }
+    await markEveryNotificationAsRead(token ?? null)
   }
 
   function renderNotification(notification: AppNotification) {
     const actor = notification.actor
     const avatarUrl = actor?.avatarUrl
-    const initial = actor?.name?.charAt(0).toUpperCase() || 'F'
+    const initial = getDisplayName(actor).charAt(0).toUpperCase()
+    const isCommentNotification = getNotificationKind(notification) === 'comment'
 
     return (
       <button
@@ -143,7 +71,7 @@ export function NotificationDropdown({ currentUser }: { currentUser?: PublicUser
             </span>
           )}
           <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-blue-600 text-white">
-            {notification.type === 'post_comment' ? <MessageCircle size={15} fill="currentColor" /> : <ThumbsUp size={15} fill="currentColor" />}
+            {isCommentNotification ? <MessageCircle size={15} fill="currentColor" /> : <ThumbsUp size={15} fill="currentColor" />}
           </span>
         </span>
         <span className="min-w-0 flex-1">

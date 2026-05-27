@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import type { PublicUser } from '@/types/social'
+import { getDisplayName } from '@/lib/userDisplay'
 import { PostDetailAvatar } from './PostDetailAvatar'
 import { SendIcon } from './PostDetailIcons'
 
@@ -9,6 +10,7 @@ type CommentComposerProps = {
   isSubmitting: boolean
   isAtLimit: boolean
   maxComments: number
+  placeholder?: string
   inputRef: RefObject<HTMLInputElement | null>
   onChange: (value: string) => void
   onSubmit: () => void
@@ -20,16 +22,17 @@ export function CommentComposer({
   isSubmitting,
   isAtLimit,
   maxComments,
+  placeholder,
   inputRef,
   onChange,
   onSubmit,
 }: CommentComposerProps) {
-  const displayName = currentUser?.name ?? 'Pengguna'
+  const displayName = getDisplayName(currentUser)
 
   return (
     <div className="shrink-0 bg-white px-4 py-3" style={{ borderTop: '1px solid #DADDE1' }}>
       <div className="flex items-start gap-2">
-        <PostDetailAvatar name={displayName} size="sm" />
+        <PostDetailAvatar avatarUrl={currentUser?.avatarUrl} name={displayName} size="sm" />
 
         <div
           className="flex flex-1 flex-col rounded-[18px] px-3 py-2"
@@ -41,22 +44,13 @@ export function CommentComposer({
             value={value}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => event.key === 'Enter' && onSubmit()}
-            placeholder={isAtLimit ? `Batas ${maxComments} komentar tercapai` : `Komentar sebagai ${displayName}...`}
+            placeholder={isAtLimit ? `Batas ${maxComments} komentar tercapai` : placeholder ?? `Komentar sebagai ${displayName}...`}
             disabled={isAtLimit || !currentUser}
             className="w-full bg-transparent text-[14px] outline-none disabled:cursor-not-allowed"
             style={{ color: '#050505' }}
           />
 
-          <div className="mt-2 flex select-none items-center justify-between pt-1">
-            <div className="flex items-center gap-2 text-[13px] text-[#65676B]">
-              <span className={isAtLimit ? 'opacity-40' : ''}>Smile</span>
-              <span className={isAtLimit ? 'opacity-40' : ''}>Foto</span>
-              <span className={isAtLimit ? 'opacity-40' : ''}>Tag</span>
-              <span className={`rounded-[4px] bg-[#CED0D4] px-1 text-[10px] font-bold text-white ${isAtLimit ? 'opacity-40' : ''}`}>
-                GIF
-              </span>
-            </div>
-
+          <div className="mt-2 flex justify-end pt-1">
             <button
               onClick={onSubmit}
               disabled={!value.trim() || isSubmitting || isAtLimit}

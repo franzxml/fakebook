@@ -11,9 +11,12 @@ datasource db {
 model User {
   id                    String               @id @default(cuid())
   name                  String
+  username              String?              @unique
   email                 String               @unique
   passwordHash          String?              @map("password_hash")
   avatarUrl             String?              @map("avatar_url")
+  bio                   String?
+  emailVerifiedAt       DateTime?            @map("email_verified_at")
   accounts              Account[]
   sessions              Session[]
   posts                 Post[]
@@ -83,17 +86,21 @@ model PostImage {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  postId    String   @map("post_id")
-  userId    String   @map("user_id")
-  content   String
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id              String    @id @default(cuid())
+  postId          String    @map("post_id")
+  userId          String    @map("user_id")
+  parentCommentId String?   @map("parent_comment_id")
+  content         String
+  post            Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentComment   Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         Comment[] @relation("CommentReplies")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@index([postId])
   @@index([userId])
+  @@index([parentCommentId])
   @@map("comments")
 }
 

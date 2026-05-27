@@ -2,12 +2,15 @@ import { Elysia, t } from 'elysia'
 import { prisma } from '../../db/prisma'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
+import { broadcastRealtime } from '../../realtime/broadcast'
 
 const publicAuthorSelect = {
   id: true,
   name: true,
+  username: true,
   email: true,
   avatarUrl: true,
+  bio: true,
 } as const
 
 const postInclude = {
@@ -21,37 +24,71 @@ const postInclude = {
   },
 } as const
 
-const postDetailInclude = {
+const getPostIncludeForUser = (userId: string) => ({
+  ...postInclude,
+  likes: {
+    where: { userId },
+    select: { userId: true },
+  },
+}) as const
+
+const getPostDetailIncludeForUser = (userId: string) => ({
   ...postInclude,
   comments: {
     include: {
       author: { select: publicAuthorSelect },
+      parentComment: {
+        include: {
+          author: { select: publicAuthorSelect },
+        },
+      },
     },
     orderBy: {
       createdAt: 'asc',
     },
   },
   likes: {
-    include: {
-      user: { select: publicAuthorSelect },
-    },
+    where: { userId },
+    select: { userId: true },
   },
-} as const
+}) as const
 
 const cleanImageUrls = (imageUrls: string[] | undefined) =>
   imageUrls?.map((imageUrl) => imageUrl.trim()).filter(Boolean) ?? []
 
+const commentInclude = {
+  author: { select: publicAuthorSelect },
+  parentComment: {
+    include: {
+      author: { select: publicAuthorSelect },
+    },
+  },
+} as const
+
+const broadcastFeedChanged = (reason: string, postId: string) => {
+  broadcastRealtime({ type: 'feed_changed', reason, postId }).catch((error) => {
+    console.error('Gagal broadcast realtime feed:', error)
+  })
+}
+
 export const postRoutes = new Elysia({ prefix: '/posts' })
   .get(
     '/feed',
-    async ({ query }) => {
+    async ({ query, request, set }) => {
+      const user = await getCurrentUser(request.headers)
+
+      if (!user) {
+        set.status = 401
+        return errorPayload('Sesi tidak valid.')
+      }
+
       const page = Number(query.page ?? 1)
       const limit = Math.min(Number(query.limit ?? 10), 50)
       const skip = (Math.max(page, 1) - 1) * limit
 
       const [posts, total] = await Promise.all([
         prisma.post.findMany({
-          include: postInclude,
+          include: getPostIncludeForUser(user.id),
           orderBy: {
             createdAt: 'desc',
           },
@@ -87,7 +124,7 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
     }
 
     const posts = await prisma.post.findMany({
-      include: postInclude,
+      include: getPostIncludeForUser(user.id),
       orderBy: {
         createdAt: 'desc',
       },
@@ -116,8 +153,10 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
               }
             : undefined,
         },
-        include: postInclude,
+        include: getPostIncludeForUser(user.id),
       })
+
+      broadcastFeedChanged('post_created', post.id)
 
       set.status = 201
       return { post }
@@ -139,7 +178,7 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
 
     const post = await prisma.post.findUnique({
       where: { id: params.postId },
-      include: postDetailInclude,
+      include: getPostDetailIncludeForUser(user.id),
     })
 
     if (!post) {
@@ -191,8 +230,10 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
               }
             : {}),
         },
-        include: postInclude,
+        include: getPostIncludeForUser(user.id),
       })
+
+      broadcastFeedChanged('post_updated', updatedPost.id)
 
       return { post: updatedPost }
     },
@@ -227,10 +268,18 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
     }
 
     await prisma.post.delete({ where: { id: params.postId } })
+    broadcastFeedChanged('post_deleted', params.postId)
 
     return { success: true }
   })
-  .get('/:postId/comments', async ({ params, set }) => {
+  .get('/:postId/comments', async ({ params, request, set }) => {
+    const user = await getCurrentUser(request.headers)
+
+    if (!user) {
+      set.status = 401
+      return errorPayload('Sesi tidak valid.')
+    }
+
     const post = await prisma.post.findUnique({
       where: { id: params.postId },
       select: { id: true },
@@ -243,9 +292,7 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
 
     const comments = await prisma.comment.findMany({
       where: { postId: params.postId },
-      include: {
-        author: { select: publicAuthorSelect },
-      },
+      include: commentInclude,
       orderBy: {
         createdAt: 'asc',
       },
@@ -273,18 +320,51 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         return errorPayload('Postingan tidak ditemukan.')
       }
 
+      let parentCommentId: string | undefined
+      let parentCommentOwnerId: string | undefined
+
+      if (body.parentCommentId) {
+        const parentComment = await prisma.comment.findUnique({
+          where: { id: body.parentCommentId },
+          select: {
+            id: true,
+            postId: true,
+            userId: true,
+            parentCommentId: true,
+          },
+        })
+
+        if (!parentComment || parentComment.postId !== params.postId) {
+          set.status = 404
+          return errorPayload('Komentar yang dibalas tidak ditemukan.')
+        }
+
+        parentCommentId = parentComment.parentCommentId ?? parentComment.id
+        parentCommentOwnerId = parentComment.userId
+      }
+
       const comment = await prisma.comment.create({
         data: {
           postId: params.postId,
           userId: user.id,
+          parentCommentId,
           content: body.content.trim(),
         },
-        include: {
-          author: { select: publicAuthorSelect },
-        },
+        include: commentInclude,
       })
 
-      if (post.userId !== user.id) {
+      if (parentCommentOwnerId && parentCommentOwnerId !== user.id) {
+        await prisma.notification.create({
+          data: {
+            recipientId: parentCommentOwnerId,
+            actorId: user.id,
+            postId: params.postId,
+            type: 'comment_reply',
+          },
+        })
+      }
+
+      if (post.userId !== user.id && post.userId !== parentCommentOwnerId) {
         await prisma.notification.create({
           data: {
             recipientId: post.userId,
@@ -295,12 +375,15 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         })
       }
 
+      broadcastFeedChanged('comment_created', params.postId)
+
       set.status = 201
       return { comment }
     },
     {
       body: t.Object({
         content: t.String({ minLength: 1 }),
+        parentCommentId: t.Optional(t.String({ minLength: 1 })),
       }),
     },
   )
@@ -347,6 +430,8 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
       })
     }
 
+    broadcastFeedChanged('post_liked', params.postId)
+
     set.status = 201
     return { like }
   })
@@ -364,6 +449,8 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         userId: user.id,
       },
     })
+
+    broadcastFeedChanged('post_unliked', params.postId)
 
     return { success: true }
   })

@@ -3,6 +3,16 @@ import { prisma } from '../../db/prisma'
 import { getCurrentUser, normalizeEmail, toPublicUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
 
+function normalizeUsername(username: string) {
+  return username
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._]/g, '')
+    .replace(/[._]{2,}/g, '.')
+    .replace(/^[._]+|[._]+$/g, '')
+    .slice(0, 30)
+}
+
 export const profileRoutes = new Elysia({ prefix: '/profile' })
 
   // ─── GET /profile ──────────────────────────────────────────────
@@ -19,8 +29,11 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
       select: {
         id: true,
         name: true,
+        username: true,
         email: true,
         avatarUrl: true,
+        bio: true,
+        emailVerifiedAt: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -37,7 +50,7 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
   })
 
   // ─── PATCH /profile ────────────────────────────────────────────
-  // Update nama, email, avatar — BUKAN password
+  // Update nama, username, bio, email, avatar — BUKAN password
   .patch(
     '/',
     async ({ body, request, set }) => {
@@ -48,12 +61,14 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      if (!body.name && !body.email && body.avatarUrl === undefined) {
+      if (!body.name && body.username === undefined && body.bio === undefined && !body.email && body.avatarUrl === undefined) {
         set.status = 400
         return errorPayload('Tidak ada data yang diperbarui.')
       }
 
       const email = body.email ? normalizeEmail(body.email) : undefined
+      const username = body.username === undefined ? undefined : normalizeUsername(body.username)
+      const bio = body.bio === undefined ? undefined : body.bio.trim()
 
       if (email && email !== user.email) {
         const existingUser = await prisma.user.findUnique({ where: { email } })
@@ -63,10 +78,31 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
         }
       }
 
+      if (username !== undefined) {
+        if (username.length < 3) {
+          set.status = 400
+          return errorPayload('Username minimal 3 karakter.')
+        }
+
+        const existingUsername = await prisma.user.findFirst({
+          where: {
+            username,
+            id: { not: user.id },
+          },
+        })
+
+        if (existingUsername) {
+          set.status = 409
+          return errorPayload('Username sudah digunakan.')
+        }
+      }
+
       const updatedUser = await prisma.user.update({
         where: { id: user.id },
         data: {
           ...(body.name ? { name: body.name.trim() } : {}),
+          ...(username !== undefined ? { username } : {}),
+          ...(bio !== undefined ? { bio: bio || null } : {}),
           ...(email ? { email } : {}),
           ...(body.avatarUrl !== undefined ? { avatarUrl: body.avatarUrl } : {}),
         },
@@ -77,6 +113,8 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
     {
       body: t.Object({
         name: t.Optional(t.String({ minLength: 1 })),
+        username: t.Optional(t.String({ minLength: 3 })),
+        bio: t.Optional(t.String()),
         email: t.Optional(t.String({ minLength: 3 })),
         avatarUrl: t.Optional(t.Nullable(t.String())),
       }),

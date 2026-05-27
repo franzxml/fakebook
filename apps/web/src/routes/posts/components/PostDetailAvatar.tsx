@@ -1,5 +1,17 @@
-export function PostDetailAvatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+export function PostDetailAvatar({
+  avatarUrl,
+  name,
+  size = 'md',
+}: {
+  avatarUrl?: string | null
+  name: string
+  size?: 'sm' | 'md'
+}) {
   const sizeClass = size === 'sm' ? 'size-8 text-xs' : 'size-10 text-sm'
+
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt="" className={`${sizeClass} shrink-0 rounded-full object-cover`} />
+  }
 
   return (
     <div

@@ -4,8 +4,8 @@ type HomeAvatarProps = {
   size?: string
 }
 
-export function HomeAvatar({ name = 'Facebook', imageUrl, size = 'h-10 w-10' }: HomeAvatarProps) {
-  const displayName = name?.trim() || 'Facebook'
+export function HomeAvatar({ name = 'Fakebook', imageUrl, size = 'h-10 w-10' }: HomeAvatarProps) {
+  const displayName = name?.trim() || 'Fakebook'
   const initial = displayName.charAt(0).toUpperCase()
 
   if (imageUrl) {
