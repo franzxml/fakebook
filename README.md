@@ -60,7 +60,7 @@ Laporan progress dapat diakses melalui tautan berikut:
 ## Struktur Folder
 
 ```text
-ppwl-clone-fakebook/
+fakebook/
 |-- apps/
 |   |-- api/
 |   |   |-- prisma/
@@ -164,15 +164,15 @@ ppwl-clone-fakebook/
 2. Clone repositori.
 
    ```bash
-   git clone git@github.com:franzxml/ppwl-clone-fakebook.git
-   cd ppwl-clone-fakebook
+   git clone git@github.com:franzxml/fakebook.git
+   cd fakebook
    ```
 
    Jika menggunakan HTTPS:
 
    ```bash
-   git clone https://github.com/franzxml/ppwl-clone-fakebook.git
-   cd ppwl-clone-fakebook
+   git clone https://github.com/franzxml/fakebook.git
+   cd fakebook
    ```
 
 3. Install dependensi.
