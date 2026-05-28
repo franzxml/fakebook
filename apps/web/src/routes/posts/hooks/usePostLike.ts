@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getStoredSession, likePost, unlikePost } from '@/services/api'
 import type { FeedPost } from '@/types/social'
 
@@ -13,15 +13,11 @@ function isPostLikedByUser(post: FeedPost, userId?: string) {
 }
 
 export function usePostLike({ post, currentUserId, onLikeStatusChange }: UsePostLikeOptions) {
-  const [liked, setLiked] = useState(() => isPostLikedByUser(post, currentUserId))
-  const [likeCount, setLikeCount] = useState(post._count.likes)
+  const [optimisticState, setOptimisticState] = useState<{ liked: boolean; likeCount: number } | null>(null)
   const [isUpdatingLike, setIsUpdatingLike] = useState(false)
   const [likeError, setLikeError] = useState<string | null>(null)
-
-  useEffect(() => {
-    setLiked(isPostLikedByUser(post, currentUserId))
-    setLikeCount(post._count.likes)
-  }, [currentUserId, post.id, post.likes, post._count.likes])
+  const liked = optimisticState?.liked ?? isPostLikedByUser(post, currentUserId)
+  const likeCount = optimisticState?.likeCount ?? post._count.likes
 
   async function handleLike() {
     const session = getStoredSession()
@@ -36,8 +32,7 @@ export function usePostLike({ post, currentUserId, onLikeStatusChange }: UsePost
 
     setIsUpdatingLike(true)
     setLikeError(null)
-    setLiked(nextLiked)
-    setLikeCount(nextLikeCount)
+    setOptimisticState({ liked: nextLiked, likeCount: nextLikeCount })
     onLikeStatusChange?.(nextLikeCount, nextLiked)
 
     try {
@@ -48,11 +43,11 @@ export function usePostLike({ post, currentUserId, onLikeStatusChange }: UsePost
       }
     } catch (error) {
       const rollbackLikeCount = Math.max(nextLikeCount + (nextLiked ? -1 : 1), 0)
-      setLiked(!nextLiked)
-      setLikeCount(rollbackLikeCount)
+      setOptimisticState({ liked: !nextLiked, likeCount: rollbackLikeCount })
       onLikeStatusChange?.(rollbackLikeCount, !nextLiked)
       setLikeError(error instanceof Error ? error.message : 'Aksi suka gagal diproses.')
     } finally {
+      setOptimisticState(null)
       setIsUpdatingLike(false)
     }
   }

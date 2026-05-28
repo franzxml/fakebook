@@ -98,7 +98,7 @@ export function PostDetailPage({
       inputRef.current?.focus()
       inputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }, 150)
-  }, [autoFocusComment])
+  }, [autoFocusComment, inputRef])
 
   const content = (
     <div

@@ -35,18 +35,22 @@ export function usePostComments({
   const [commentError, setCommentError] = useState<string | null>(null)
   const [composerError, setComposerError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const onCommentCountChangeRef = useRef(onCommentCountChange)
   const isAtLimit = comments.length >= maxComments
+
+  useEffect(() => {
+    onCommentCountChangeRef.current = onCommentCountChange
+  }, [onCommentCountChange])
 
   useEffect(() => {
     let isMounted = true
 
-    setIsLoadingComments(true)
     fetchPostComments(postId)
       .then((response) => {
         if (!isMounted) return
         setCommentError(null)
         setComments(response.comments)
-        onCommentCountChange?.(response.comments.length)
+        onCommentCountChangeRef.current?.(response.comments.length)
       })
       .catch(() => {
         if (!isMounted) return
@@ -61,7 +65,7 @@ export function usePostComments({
     return () => {
       isMounted = false
     }
-  }, [onCommentCountChange, postId])
+  }, [postId])
 
   async function submitComment() {
     const trimmed = commentInput.trim()
@@ -88,7 +92,7 @@ export function usePostComments({
         const comment = await createPostComment(postId, trimmed, session.token, replyingToComment?.id)
         setComments((currentComments) => {
           const nextComments = [...currentComments, comment]
-          onCommentCountChange?.(nextComments.length)
+          onCommentCountChangeRef.current?.(nextComments.length)
           return nextComments
         })
         setReplyingToComment(null)
@@ -144,7 +148,7 @@ export function usePostComments({
         const nextComments = currentComments.filter((currentComment) => (
           currentComment.id !== comment.id && currentComment.parentCommentId !== comment.id
         ))
-        onCommentCountChange?.(nextComments.length)
+        onCommentCountChangeRef.current?.(nextComments.length)
         return nextComments
       })
       if (editingCommentId === comment.id || replyingToComment?.id === comment.id) {
