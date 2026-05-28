@@ -44,14 +44,19 @@ function App() {
       return undefined
     }
 
-    localStorage.removeItem('show_welcome_popup')
-    setIsWelcomeVisible(true)
-
-    const timeoutId = window.setTimeout(() => {
+    const showTimeoutId = window.setTimeout(() => {
+      setIsWelcomeVisible(true)
+    }, 0)
+    const hideTimeoutId = window.setTimeout(() => {
       setIsWelcomeVisible(false)
     }, 3200)
 
-    return () => window.clearTimeout(timeoutId)
+    localStorage.removeItem('show_welcome_popup')
+
+    return () => {
+      window.clearTimeout(showTimeoutId)
+      window.clearTimeout(hideTimeoutId)
+    }
   }, [currentUser, pathname])
 
   useEffect(() => {

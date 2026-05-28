@@ -23,14 +23,22 @@ type PublicProfile = PublicUser & {
   }
 }
 
+type PublicProfileState = {
+  userId: string | null
+  profile: PublicProfile | null
+  error: string | null
+}
+
 export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
   const currentUser = getStoredUser()
-  const [profile, setProfile] = useState<PublicProfile | null>(null)
+  const [profileState, setProfileState] = useState<PublicProfileState>({
+    userId: null,
+    profile: null,
+    error: null,
+  })
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null)
   const [shouldFocusComment, setShouldFocusComment] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   function handleBack() {
     if (window.history.length > 1) {
@@ -44,22 +52,19 @@ export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
   useEffect(() => {
     let isMounted = true
 
-    setIsLoading(true)
-    setError(null)
-
     fetchPublicUserProfile(userId)
       .then((response) => {
         if (!isMounted) return
-        setProfile(response.user)
+        setProfileState({ userId, profile: response.user, error: null })
         setPosts(response.user.posts)
       })
       .catch((fetchError) => {
         if (!isMounted) return
-        setError(fetchError instanceof Error ? fetchError.message : 'Gagal memuat profil pengguna.')
-      })
-      .finally(() => {
-        if (!isMounted) return
-        setIsLoading(false)
+        setProfileState({
+          userId,
+          profile: null,
+          error: fetchError instanceof Error ? fetchError.message : 'Gagal memuat profil pengguna.',
+        })
       })
 
     return () => {
@@ -104,6 +109,9 @@ export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
     setSelectedPost((currentPost) => (currentPost?.id === postId ? null : currentPost))
   }
 
+  const profile = profileState.userId === userId ? profileState.profile : null
+  const error = profileState.userId === userId ? profileState.error : null
+  const isLoading = profileState.userId !== userId
   const displayName = getDisplayName(profile)
 
   return (

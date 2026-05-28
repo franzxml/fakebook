@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { MessageCircle, MoreHorizontal, Pencil, ThumbsUp, Trash2 } from 'lucide-react'
 import type { FeedPost, PublicUser } from '@ppwl/shared'
 import { deletePost, getStoredSession, likePost, unlikePost, updatePost } from '@/services/api'
@@ -36,7 +36,7 @@ export function PostCard({
   onPostDeleted: (postId: string) => void
   onOpenAuthor?: () => void
 }) {
-  const [liked, setLiked] = useState(() => isPostLikedByUser(post, currentUser?.id))
+  const [optimisticLiked, setOptimisticLiked] = useState<boolean | null>(null)
   const [isUpdatingLike, setIsUpdatingLike] = useState(false)
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -44,17 +44,10 @@ export function PostCard({
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [postError, setPostError] = useState<string | null>(null)
+  const liked = optimisticLiked ?? isPostLikedByUser(post, currentUser?.id)
   const likeCount = post._count.likes
   const isOwner = Boolean(currentUser?.id && currentUser.id === post.author.id)
   const authorDisplayName = getDisplayName(post.author)
-
-  useEffect(() => {
-    setLiked(isPostLikedByUser(post, currentUser?.id))
-  }, [currentUser?.id, post.id, post.likes])
-
-  useEffect(() => {
-    setEditContent(post.content)
-  }, [post.content])
 
   async function handleLike() {
     const session = getStoredSession()
@@ -64,7 +57,7 @@ export function PostCard({
     const nextLiked = !liked
     const nextLikeCount = Math.max(likeCount + (nextLiked ? 1 : -1), 0)
 
-    setLiked(nextLiked)
+    setOptimisticLiked(nextLiked)
     onLikeStatusChange(post.id, nextLikeCount, nextLiked)
     setIsUpdatingLike(true)
 
@@ -75,9 +68,10 @@ export function PostCard({
         await unlikePost(post.id, session.token)
       }
     } catch {
-      setLiked(liked)
+      setOptimisticLiked(liked)
       onLikeStatusChange(post.id, likeCount, liked)
     } finally {
+      setOptimisticLiked(null)
       setIsUpdatingLike(false)
     }
   }
@@ -159,6 +153,7 @@ export function PostCard({
                     <button
                       className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-gray-800 hover:bg-gray-100"
                       onClick={() => {
+                        setEditContent(post.content)
                         setIsEditing(true)
                         setIsActionsOpen(false)
                       }}

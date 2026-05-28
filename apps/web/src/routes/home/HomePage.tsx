@@ -34,7 +34,7 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
   const addFeedPost = useFeedStore((state) => state.addPost)
   const updateFeedPost = useFeedStore((state) => state.updatePost)
   const deleteFeedPost = useFeedStore((state) => state.deletePost)
-  const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null)
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [shouldFocusComment, setShouldFocusComment] = useState(false)
   const feedQuery = useQuery({
     queryKey: ['feed', currentUser?.id],
@@ -64,13 +64,7 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
     }
   }, [refetchFeed])
 
-  useEffect(() => {
-    setSelectedPost((currentPost) => {
-      if (!currentPost) return currentPost
-      return feedPosts.find((post) => post.id === currentPost.id) ?? currentPost
-    })
-  }, [feedPosts])
-
+  const selectedPost = selectedPostId ? feedPosts.find((post) => post.id === selectedPostId) ?? null : null
   const isLoadingFeed = feedQuery.isLoading && feedPosts.length === 0
   const feedError = feedQuery.isError ? 'Gagal memuat postingan dari backend.' : null
 
@@ -86,18 +80,6 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
         },
       })
     }
-    setSelectedPost((currentPost) =>
-      currentPost?.id === postId
-        ? {
-            ...currentPost,
-            likes: currentUser?.id && nextLiked ? [{ userId: currentUser.id }] : [],
-            _count: {
-              ...currentPost._count,
-              likes: nextLikeCount,
-            },
-          }
-        : currentPost,
-    )
   }
 
   function handleCommentCountChange(postId: string, nextCommentCount: number) {
@@ -111,27 +93,15 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
         },
       })
     }
-    setSelectedPost((currentPost) =>
-      currentPost?.id === postId
-        ? {
-            ...currentPost,
-            _count: {
-              ...currentPost._count,
-              comments: nextCommentCount,
-            },
-          }
-        : currentPost,
-    )
   }
 
   function handlePostUpdated(updatedPost: FeedPost) {
     updateFeedPost(updatedPost)
-    setSelectedPost((currentPost) => currentPost?.id === updatedPost.id ? updatedPost : currentPost)
   }
 
   function handlePostDeleted(postId: string) {
     deleteFeedPost(postId)
-    setSelectedPost((currentPost) => currentPost?.id === postId ? null : currentPost)
+    setSelectedPostId((currentPostId) => currentPostId === postId ? null : currentPostId)
   }
 
   return (
@@ -161,12 +131,12 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
             onPostDeleted={handlePostDeleted}
             onOpenDetail={() => {
               setShouldFocusComment(false)
-              setSelectedPost(post)
+              setSelectedPostId(post.id)
             }}
             onOpenAuthor={() => navigate(`/users/${post.author.id}`)}
             onOpenComments={() => {
               setShouldFocusComment(true)
-              setSelectedPost(post)
+              setSelectedPostId(post.id)
             }}
           />
         ))
@@ -179,7 +149,7 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
           autoFocusComment={shouldFocusComment}
           onCommentCountChange={(nextCommentCount) => handleCommentCountChange(selectedPost.id, nextCommentCount)}
           onLikeStatusChange={(nextLikeCount, nextLiked) => handleLikeStatusChange(selectedPost.id, nextLikeCount, nextLiked)}
-          onClose={() => setSelectedPost(null)}
+          onClose={() => setSelectedPostId(null)}
         />
       )}
     </main>
