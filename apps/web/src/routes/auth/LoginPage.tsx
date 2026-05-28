@@ -152,7 +152,7 @@ export function LoginPage() {
           <img
             src={loginHeroImage}
             alt=""
-            className="pointer-events-none absolute right-4 top-14 w-[min(45vw,580px)] select-none rounded-[2rem] object-contain xl:right-8 2xl:w-[620px]"
+            className="pointer-events-none absolute right-4 top-20 w-[min(38vw,520px)] select-none rounded-[2rem] object-contain xl:right-8 xl:top-14 xl:w-[min(45vw,580px)] 2xl:w-[620px]"
             draggable={false}
           />
 

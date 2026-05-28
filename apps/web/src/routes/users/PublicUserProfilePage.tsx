@@ -137,9 +137,9 @@ export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
           </section>
         ) : (
           <>
-            <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-              <div className="flex items-start gap-4">
-                <HomeAvatar name={displayName} imageUrl={profile.avatarUrl} size="h-20 w-20" />
+            <section className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <HomeAvatar name={displayName} imageUrl={profile.avatarUrl} size="h-16 w-16 sm:h-20 sm:w-20" />
                 <div className="min-w-0 flex-1">
                   <h1 className="truncate text-2xl font-bold text-gray-950">{displayName}</h1>
                   {profile.bio ? (
@@ -147,18 +147,18 @@ export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
                   ) : (
                     <p className="mt-2 text-sm font-medium text-gray-500">Belum ada bio.</p>
                   )}
-                  <div className="mt-4 grid grid-cols-3 gap-2 border-t border-gray-100 pt-4 text-center">
-                    <div>
+                  <div className="mt-4 grid grid-cols-3 gap-1 border-t border-gray-100 pt-4 text-center min-[375px]:gap-2">
+                    <div className="min-w-0">
                       <p className="text-lg font-bold">{profile._count.posts}</p>
-                      <p className="text-xs font-semibold text-gray-500">Postingan</p>
+                      <p className="truncate text-[11px] font-semibold text-gray-500 min-[375px]:text-xs">Postingan</p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-lg font-bold">{profile._count.comments}</p>
-                      <p className="text-xs font-semibold text-gray-500">Komentar</p>
+                      <p className="truncate text-[11px] font-semibold text-gray-500 min-[375px]:text-xs">Komentar</p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-lg font-bold">{profile._count.likes}</p>
-                      <p className="text-xs font-semibold text-gray-500">Suka</p>
+                      <p className="truncate text-[11px] font-semibold text-gray-500 min-[375px]:text-xs">Suka</p>
                     </div>
                   </div>
                 </div>
