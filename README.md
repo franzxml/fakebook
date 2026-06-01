@@ -13,11 +13,13 @@ Laporan progress dapat diakses melalui tautan berikut:
 * Proteksi halaman privat agar hanya user login yang bisa masuk
 * Feed postingan dari database
 * Membuat, mengedit, dan menghapus postingan milik sendiri
-* Upload gambar postingan melalui presigned URL S3
+* Edit postingan termasuk ganti gambar langsung dari menu postingan
+* Upload gambar postingan melalui presigned URL S3 (maksimal 1 gambar)
 * Like dan unlike postingan
 * Status like tetap tersimpan setelah refresh
 * Detail postingan
 * Tambah, edit, dan hapus komentar
+* Dialog konfirmasi hapus komentar (custom, bukan dialog browser default)
 * Balas komentar
 * Notifikasi untuk like, komentar, dan balasan komentar
 * Dropdown notifikasi dengan close otomatis saat klik di luar
@@ -33,7 +35,6 @@ Laporan progress dapat diakses melalui tautan berikut:
 * Ubah nama, username, bio, email, avatar, dan password
 * Logout
 * State management frontend menggunakan Zustand
-* Data fetching frontend menggunakan TanStack Query
 * Struktur frontend modular per fitur
 
 ## Teknologi
@@ -45,7 +46,6 @@ Laporan progress dapat diakses melalui tautan berikut:
 * Tailwind CSS 4
 * Lucide React
 * Zustand
-* TanStack Query
 * Elysia
 * Prisma 7
 * libSQL / Turso
@@ -100,7 +100,7 @@ fakebook/
 |       |   `-- favicon.svg
 |       |-- src/
 |       |   |-- components/
-|       |   |   `-- ui/
+|       |   |   `-- Avatar.tsx
 |       |   |-- hooks/
 |       |   |   `-- useNotificationSync.ts
 |       |   |-- layouts/
@@ -109,20 +109,29 @@ fakebook/
 |       |   |   |-- navigation.ts
 |       |   |   |-- notificationDisplay.tsx
 |       |   |   |-- userDisplay.ts
-|       |   |   `-- utils.ts
+|       |   |   `-- validateImageFile.ts
 |       |   |-- routes/
 |       |   |   |-- auth/
+|       |   |   |   |-- components/
+|       |   |   |   |-- ForgotPasswordPage.tsx
+|       |   |   |   |-- LoginPage.tsx
+|       |   |   |   `-- RegisterPage.tsx
 |       |   |   |-- home/
 |       |   |   |   |-- components/
-|       |   |   |   |-- data/
-|       |   |   |   `-- utils/
+|       |   |   |   `-- HomePage.tsx
 |       |   |   |-- notifications/
+|       |   |   |   `-- NotificationsPage.tsx
 |       |   |   |-- posts/
 |       |   |   |   |-- components/
 |       |   |   |   |-- hooks/
-|       |   |   |   `-- utils/
+|       |   |   |   |-- utils/
+|       |   |   |   `-- PostDetailPage.tsx
 |       |   |   |-- profile/
+|       |   |   |   |-- hooks/
+|       |   |   |   `-- ProfilePage.tsx
 |       |   |   `-- users/
+|       |   |       |-- PublicUserProfilePage.tsx
+|       |   |       `-- UsersPage.tsx
 |       |   |-- services/
 |       |   |   `-- api.ts
 |       |   |-- stores/
@@ -137,7 +146,6 @@ fakebook/
 |       |   |-- App.tsx
 |       |   |-- index.css
 |       |   `-- main.tsx
-|       |-- components.json
 |       |-- eslint.config.js
 |       |-- index.html
 |       |-- package.json
@@ -273,9 +281,9 @@ fakebook/
 Frontend production di-build dari `apps/web` lalu di-upload ke S3 dan disajikan lewat CloudFront.
 
 ```bash
-bun run build:web
-aws s3 sync apps/web/dist s3://s3-monorepo-frontend-prod-2026 --delete
-aws cloudfront create-invalidation --distribution-id E3PHP2PBFP7CIC --paths '/*'
+bun run build:web:s3
+AWS_S3_BUCKET=s3-monorepo-frontend-prod-2026 bun run deploy:web:s3
+AWS_CLOUDFRONT_DISTRIBUTION_ID=E3PHP2PBFP7CIC bun run deploy:web:invalidate
 ```
 
 ### Backend
@@ -331,6 +339,7 @@ wss://8z4wlfa9cd.execute-api.us-east-1.amazonaws.com/prod
 
 * Folder `apps/web/src/routes` mengikuti domain halaman atau fitur.
 * Folder `components`, `hooks`, dan `utils` di dalam route dipakai untuk kode yang spesifik pada route tersebut.
+* Folder `apps/web/src/components` berisi komponen shared yang dipakai lintas route (misal `Avatar`).
 * Folder `apps/web/src/stores` berisi Zustand store dengan penamaan camelCase dan diekspor lewat `stores/index.ts`.
 * Folder `apps/web/public/images` digunakan untuk asset statis publik.
 * Folder `apps/api/src/routes` mengikuti resource API.

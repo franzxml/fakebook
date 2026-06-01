@@ -1,7 +1,7 @@
+import { Avatar } from '@/components/Avatar'
 import type { PostComment } from '@/types/social'
 import { getDisplayName } from '@/lib/userDisplay'
-import { formatRelativeTime } from '../utils/postDetailFormatters'
-import { PostDetailAvatar } from './PostDetailAvatar'
+import { formatRelativeTime } from '../utils/formatters'
 
 type CommentListProps = {
   comments: PostComment[]
@@ -27,7 +27,7 @@ export function CommentList({ comments, currentUserId, onEdit, onDelete, onReply
 
     return (
       <div key={comment.id} className={`group flex items-start gap-2.5 ${isReply ? 'ml-10' : ''}`}>
-        <PostDetailAvatar avatarUrl={comment.author.avatarUrl} name={authorDisplayName} size="sm" />
+        <Avatar imageUrl={comment.author.avatarUrl} name={authorDisplayName} size="size-8" />
         <div className="flex max-w-[85%] flex-1 flex-col">
           <div className="flex items-center gap-2">
             <div className="inline-block rounded-[18px] bg-[#F0F2F5] px-3 py-2">
@@ -45,7 +45,7 @@ export function CommentList({ comments, currentUserId, onEdit, onDelete, onReply
             </div>
 
             {currentUserId === comment.author.id ? (
-              <div className="flex opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="flex [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:transition-opacity [@media(hover:hover)]:group-hover:opacity-100">
                 <button
                   className="rounded-full px-2 py-1 text-xs font-bold text-[#65676B] hover:bg-[#F2F3F5] disabled:opacity-50"
                   disabled={isBusy}

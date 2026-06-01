@@ -34,6 +34,8 @@ export function usePostComments({
   const [isLoadingComments, setIsLoadingComments] = useState(true)
   const [commentError, setCommentError] = useState<string | null>(null)
   const [composerError, setComposerError] = useState<string | null>(null)
+  const [commentToDelete, setCommentToDelete] = useState<PostComment | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const onCommentCountChangeRef = useRef(onCommentCountChange)
   const isAtLimit = comments.length >= maxComments
@@ -129,33 +131,44 @@ export function usePostComments({
     setComposerError(null)
   }
 
-  async function deleteSelectedComment(comment: PostComment) {
-    const session = getStoredSession()
+  function deleteSelectedComment(comment: PostComment) {
+    setDeleteError(null)
+    setCommentToDelete(comment)
+  }
 
-    if (!session?.token || isUpdatingComment) {
-      setComposerError('Sesi tidak ditemukan. Silakan login ulang.')
+  function cancelDelete() {
+    setCommentToDelete(null)
+    setDeleteError(null)
+  }
+
+  async function confirmDeleteComment() {
+    if (!commentToDelete) return
+
+    const session = getStoredSession()
+    if (!session?.token) {
+      setDeleteError('Sesi tidak ditemukan. Silakan login ulang.')
       return
     }
 
-    if (!window.confirm('Hapus komentar ini?')) return
-
     setIsUpdatingComment(true)
-    setComposerError(null)
+    setDeleteError(null)
 
     try {
-      await deleteComment(comment.id, session.token)
+      await deleteComment(commentToDelete.id, session.token)
+      const deletedId = commentToDelete.id
       setComments((currentComments) => {
         const nextComments = currentComments.filter((currentComment) => (
-          currentComment.id !== comment.id && currentComment.parentCommentId !== comment.id
+          currentComment.id !== deletedId && currentComment.parentCommentId !== deletedId
         ))
         onCommentCountChangeRef.current?.(nextComments.length)
         return nextComments
       })
-      if (editingCommentId === comment.id || replyingToComment?.id === comment.id) {
+      if (editingCommentId === deletedId || replyingToComment?.id === deletedId) {
         cancelComposerMode()
       }
+      setCommentToDelete(null)
     } catch (error) {
-      setComposerError(error instanceof Error ? error.message : 'Komentar gagal dihapus.')
+      setDeleteError(error instanceof Error ? error.message : 'Komentar gagal dihapus.')
     } finally {
       setIsUpdatingComment(false)
     }
@@ -163,10 +176,14 @@ export function usePostComments({
 
   return {
     cancelComposerMode,
+    cancelDelete,
     commentError,
     commentInput,
+    commentToDelete,
     comments,
     composerError,
+    confirmDeleteComment,
+    deleteError,
     deleteSelectedComment,
     editingCommentId,
     inputRef,

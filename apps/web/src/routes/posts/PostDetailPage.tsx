@@ -5,6 +5,7 @@ import { getDisplayName } from '@/lib/userDisplay'
 import type { FeedPost, PostComment } from '@/types/social'
 import { CommentComposer } from './components/CommentComposer'
 import { CommentList } from './components/CommentList'
+import { DeleteCommentDialog } from './components/DeleteCommentDialog'
 import { EngagementBar } from './components/EngagementBar'
 import { ModalHeader } from './components/ModalHeader'
 import { PostBody } from './components/PostBody'
@@ -37,12 +38,17 @@ export function PostDetailPage({
   const currentUser = getStoredUser()
   const isModal = Boolean(onClose)
   const authorDisplayName = getDisplayName(post.author)
+
   const {
     cancelComposerMode,
+    cancelDelete,
     commentError,
     commentInput,
+    commentToDelete,
     comments,
     composerError,
+    confirmDeleteComment,
+    deleteError,
     deleteSelectedComment,
     editingCommentId,
     inputRef,
@@ -61,6 +67,7 @@ export function PostDetailPage({
     onCommentCountChange,
     postId: post.id,
   })
+
   const {
     handleLike,
     isUpdatingLike,
@@ -99,6 +106,16 @@ export function PostDetailPage({
       inputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }, 150)
   }, [autoFocusComment, inputRef])
+
+  const deleteDialog = commentToDelete ? (
+    <DeleteCommentDialog
+      comment={commentToDelete}
+      isDeleting={isUpdatingComment}
+      error={deleteError}
+      onClose={cancelDelete}
+      onConfirm={confirmDeleteComment}
+    />
+  ) : null
 
   const content = (
     <div
@@ -161,8 +178,15 @@ export function PostDetailPage({
         value={commentInput}
         isSubmitting={isSubmitting}
         isAtLimit={!editingCommentId && isAtLimit}
+        isEditing={Boolean(editingCommentId)}
         maxComments={MAX_COMMENTS}
-        placeholder={replyingToComment ? `Balas ${getDisplayName(replyingToComment.author)}...` : undefined}
+        placeholder={
+          editingCommentId
+            ? 'Mengedit komentar...'
+            : replyingToComment
+              ? `Balas ${getDisplayName(replyingToComment.author)}...`
+              : undefined
+        }
         inputRef={inputRef}
         onChange={setCommentInput}
         onSubmit={submitComment}
@@ -181,17 +205,21 @@ export function PostDetailPage({
         <div className="flex justify-center">
           {content}
         </div>
+        {deleteDialog}
       </AppLayout>
     )
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
-      onClick={onClose}
-    >
-      {content}
-    </div>
+    <>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+        onClick={onClose}
+      >
+        {content}
+      </div>
+      {deleteDialog}
+    </>
   )
 }

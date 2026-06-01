@@ -3,7 +3,7 @@ import type { NotificationsResponse } from '@ppwl/shared'
 import type { PostComment } from '@/types/social'
 import { useAuthStore } from '@/stores'
 
-export type FeedResponse = {
+type FeedResponse = {
   posts: FeedPost[]
   meta: {
     total: number
@@ -13,30 +13,30 @@ export type FeedResponse = {
   }
 }
 
-export type PostCommentsResponse = {
+type PostCommentsResponse = {
   comments: PostComment[]
 }
 
-export type CreatePostResponse = {
+type CreatePostResponse = {
   post: FeedPost
 }
 
-export type UpdatePostResponse = {
+type UpdatePostResponse = {
   post: FeedPost
 }
 
-export type CreateCommentResponse = {
+type CreateCommentResponse = {
   comment: PostComment
 }
 
-export type UsersResponse = {
+type UsersResponse = {
   users: PublicUser[]
   meta: {
     total: number
   }
 }
 
-export type PublicUserProfileResponse = {
+type PublicUserProfileResponse = {
   user: PublicUser & {
     createdAt: string
     posts: FeedPost[]
@@ -130,7 +130,7 @@ export async function apiRequest<TResponse>(path: string, options: RequestOption
   return response.json() as Promise<TResponse>
 }
 
-export function saveAuthSession(auth: AuthResponse) {
+function saveAuthSession(auth: AuthResponse) {
   localStorage.setItem('session', JSON.stringify(auth.session))
   localStorage.setItem('user', JSON.stringify(auth.user))
   localStorage.setItem('show_welcome_popup', '1')
@@ -364,11 +364,3 @@ export async function deletePost(postId: string, token: string) {
   })
 }
 
-/** Ambil detail satu postingan */
-export async function fetchPostDetail(postId: string) {
-  return apiRequest<{ post: FeedPost }>(`/posts/${postId}`, {
-    token: getStoredSession()?.token,
-  })
-}
-
-export { apiBaseUrl }

@@ -1,14 +1,15 @@
 import type { RefObject } from 'react'
+import { Avatar } from '@/components/Avatar'
 import type { PublicUser } from '@/types/social'
 import { getDisplayName } from '@/lib/userDisplay'
-import { PostDetailAvatar } from './PostDetailAvatar'
-import { SendIcon } from './PostDetailIcons'
+import { CheckIcon, SendIcon } from './Icons'
 
 type CommentComposerProps = {
   currentUser: PublicUser | null
   value: string
   isSubmitting: boolean
   isAtLimit: boolean
+  isEditing?: boolean
   maxComments: number
   placeholder?: string
   inputRef: RefObject<HTMLInputElement | null>
@@ -21,6 +22,7 @@ export function CommentComposer({
   value,
   isSubmitting,
   isAtLimit,
+  isEditing = false,
   maxComments,
   placeholder,
   inputRef,
@@ -30,13 +32,20 @@ export function CommentComposer({
   const displayName = getDisplayName(currentUser)
 
   return (
-    <div className="shrink-0 bg-white px-4 py-3" style={{ borderTop: '1px solid #DADDE1' }}>
+    <div
+      className="shrink-0 bg-white px-4 py-3"
+      style={{ borderTop: isEditing ? '1px solid #E3F0FF' : '1px solid #DADDE1', backgroundColor: isEditing ? '#F0F7FF' : 'white' }}
+    >
       <div className="flex items-start gap-2">
-        <PostDetailAvatar avatarUrl={currentUser?.avatarUrl} name={displayName} size="sm" />
+        <Avatar imageUrl={currentUser?.avatarUrl} name={displayName} size="size-8" />
 
         <div
           className="flex flex-1 flex-col rounded-[18px] px-3 py-2"
-          style={{ backgroundColor: '#F0F2F5', opacity: isAtLimit ? 0.6 : 1 }}
+          style={{
+            backgroundColor: isEditing ? '#DBEAFE' : '#F0F2F5',
+            opacity: isAtLimit ? 0.6 : 1,
+            border: isEditing ? '1.5px solid #93C5FD' : 'none',
+          }}
         >
           <input
             ref={inputRef}
@@ -56,9 +65,9 @@ export function CommentComposer({
               disabled={!value.trim() || isSubmitting || isAtLimit}
               className="px-1 transition-opacity focus:outline-none disabled:opacity-30"
               style={{ color: '#1877F2' }}
-              aria-label="Kirim"
+              aria-label={isEditing ? 'Simpan' : 'Kirim'}
             >
-              <SendIcon />
+              {isEditing ? <CheckIcon className="size-4" /> : <SendIcon />}
             </button>
           </div>
         </div>

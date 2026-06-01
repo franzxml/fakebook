@@ -6,7 +6,7 @@ import { navigate, notifyAuthStorageChanged } from '@/lib/navigation'
 import { getDisplayName } from '@/lib/userDisplay'
 import { clearAuthSession, getStoredSession, logout } from '@/services/api'
 import { useNotificationStore, useUIStore } from '@/stores'
-import { HomeAvatar } from './HomeAvatar'
+import { Avatar } from '@/components/Avatar'
 import { NotificationDropdown } from './NotificationDropdown'
 
 type HomeTopBarProps = {
@@ -139,7 +139,7 @@ export function HomeTopBar({ currentPath = '/home', currentUser }: HomeTopBarPro
             {isNotificationsOpen ? <NotificationDropdown currentUser={currentUser} /> : null}
           </div>
           <button type="button" title="Profil" onClick={() => navigate('/profile')}>
-            <HomeAvatar name={currentDisplayName} imageUrl={currentUser?.avatarUrl} size="h-8 w-8 min-[375px]:h-9 min-[375px]:w-9 sm:h-10 sm:w-10" />
+            <Avatar name={currentDisplayName} imageUrl={currentUser?.avatarUrl} size="h-8 w-8 min-[375px]:h-9 min-[375px]:w-9 sm:h-10 sm:w-10" />
           </button>
           <IconButton title="Logout" onClick={handleLogout}>
             <LogOut className="size-[18px] min-[375px]:size-5" />

@@ -3,10 +3,9 @@ import { Image as ImageIcon, Send, X } from 'lucide-react'
 import type { PublicUser } from '@ppwl/shared'
 import { AvatarCircle } from '@/layouts/AppLayout'
 import { getDisplayName } from '@/lib/userDisplay'
+import { validateImageFile } from '@/lib/validateImageFile'
 import { createPost, getStoredSession, uploadImageFile } from '@/services/api'
 import type { FeedPost } from '@/types/social'
-
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 type CreatePostBoxProps = {
   user: PublicUser
@@ -23,17 +22,11 @@ export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
 
   function handleImageChange(file: File | undefined) {
     if (!file) return
-
-    if (!file.type.startsWith('image/')) {
-      setError('File harus berupa gambar.')
+    const validationError = validateImageFile(file)
+    if (validationError) {
+      setError(validationError)
       return
     }
-
-    if (file.size > MAX_IMAGE_BYTES) {
-      setError('Ukuran gambar maksimal 5 MB.')
-      return
-    }
-
     setImageFile(file)
     setImagePreview(URL.createObjectURL(file))
     setError(null)

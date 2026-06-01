@@ -1,9 +1,11 @@
-import { useState } from 'react'
-import { MessageCircle, MoreHorizontal, Pencil, ThumbsUp, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { MessageCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import type { FeedPost, PublicUser } from '@ppwl/shared'
-import { deletePost, getStoredSession, likePost, unlikePost, updatePost } from '@/services/api'
+import { deletePost, getStoredSession } from '@/services/api'
 import { getDisplayName } from '@/lib/userDisplay'
-import { HomeAvatar } from './HomeAvatar'
+import { Avatar } from '@/components/Avatar'
+import { PostEditModal } from '@/routes/posts/components/PostEditModal'
+import { usePostLike } from '@/routes/posts/hooks/usePostLike'
 
 function PostMedia({ post }: { post: FeedPost }) {
   const imageUrl = post.images[0]?.imageUrl
@@ -11,10 +13,6 @@ function PostMedia({ post }: { post: FeedPost }) {
   if (!imageUrl) return null
 
   return <img src={imageUrl} alt="" className="mt-3 max-h-[460px] w-full object-cover" />
-}
-
-function isPostLikedByUser(post: FeedPost, userId?: string) {
-  return Boolean(userId && post.likes?.some((like) => like.userId === userId))
 }
 
 export function PostCard({
@@ -36,66 +34,29 @@ export function PostCard({
   onPostDeleted: (postId: string) => void
   onOpenAuthor?: () => void
 }) {
-  const [optimisticLiked, setOptimisticLiked] = useState<boolean | null>(null)
-  const [isUpdatingLike, setIsUpdatingLike] = useState(false)
   const [isActionsOpen, setIsActionsOpen] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editContent, setEditContent] = useState(post.content)
-  const [isSavingEdit, setIsSavingEdit] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [postError, setPostError] = useState<string | null>(null)
-  const liked = optimisticLiked ?? isPostLikedByUser(post, currentUser?.id)
-  const likeCount = post._count.likes
+  const actionsMenuRef = useRef<HTMLDivElement>(null)
+  const { handleLike, isUpdatingLike, likeCount, liked } = usePostLike({
+    post,
+    currentUserId: currentUser?.id,
+    onLikeStatusChange: (nextLikeCount, nextLiked) => onLikeStatusChange(post.id, nextLikeCount, nextLiked),
+  })
+
+  useEffect(() => {
+    if (!isActionsOpen) return
+    function handleClickOutside(event: MouseEvent) {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+        setIsActionsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isActionsOpen])
   const isOwner = Boolean(currentUser?.id && currentUser.id === post.author.id)
   const authorDisplayName = getDisplayName(post.author)
-
-  async function handleLike() {
-    const session = getStoredSession()
-
-    if (!session?.token || !currentUser?.id || isUpdatingLike) return
-
-    const nextLiked = !liked
-    const nextLikeCount = Math.max(likeCount + (nextLiked ? 1 : -1), 0)
-
-    setOptimisticLiked(nextLiked)
-    onLikeStatusChange(post.id, nextLikeCount, nextLiked)
-    setIsUpdatingLike(true)
-
-    try {
-      if (nextLiked) {
-        await likePost(post.id, session.token)
-      } else {
-        await unlikePost(post.id, session.token)
-      }
-    } catch {
-      setOptimisticLiked(liked)
-      onLikeStatusChange(post.id, likeCount, liked)
-    } finally {
-      setOptimisticLiked(null)
-      setIsUpdatingLike(false)
-    }
-  }
-
-  async function handleSaveEdit() {
-    const session = getStoredSession()
-    const trimmedContent = editContent.trim()
-
-    if (!session?.token || !trimmedContent || isSavingEdit) return
-
-    setIsSavingEdit(true)
-    setPostError(null)
-
-    try {
-      const updatedPost = await updatePost(post.id, trimmedContent, session.token)
-      onPostUpdated(updatedPost)
-      setIsEditing(false)
-      setIsActionsOpen(false)
-    } catch (error) {
-      setPostError(error instanceof Error ? error.message : 'Postingan gagal diperbarui.')
-    } finally {
-      setIsSavingEdit(false)
-    }
-  }
 
   async function handleDeletePost() {
     const session = getStoredSession()
@@ -118,123 +79,110 @@ export function PostCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
-      <div className="p-4 pb-2">
-        <div className="flex items-start justify-between">
-          <button
-            className="flex gap-3 text-left"
-            onClick={(event) => {
-              event.stopPropagation()
-              if (onOpenAuthor) {
-                onOpenAuthor()
-              } else {
-                onOpenDetail()
-              }
-            }}
-          >
-            <HomeAvatar name={authorDisplayName} imageUrl={post.author.avatarUrl} />
-            <div>
-              <h3 className="text-sm font-bold text-gray-900">{authorDisplayName}</h3>
-              <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleString('id-ID')} · publik</p>
-            </div>
-          </button>
-          <div className="relative">
+    <>
+      <article className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+        <div className="p-4 pb-2">
+          <div className="flex items-start justify-between">
             <button
-              className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
-              onClick={() => setIsActionsOpen((isOpen) => !isOpen)}
-              aria-label="Menu postingan"
+              className="flex gap-3 text-left"
+              onClick={(event) => {
+                event.stopPropagation()
+                if (onOpenAuthor) {
+                  onOpenAuthor()
+                } else {
+                  onOpenDetail()
+                }
+              }}
             >
-              <MoreHorizontal size={20} />
-            </button>
-            {isActionsOpen ? (
-              <div className="absolute right-0 top-10 z-20 w-52 rounded-lg bg-white p-2 shadow-xl ring-1 ring-black/10">
-                {isOwner ? (
-                  <>
-                    <button
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-gray-800 hover:bg-gray-100"
-                      onClick={() => {
-                        setEditContent(post.content)
-                        setIsEditing(true)
-                        setIsActionsOpen(false)
-                      }}
-                    >
-                      <Pencil size={17} />
-                      Edit postingan
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={isDeleting}
-                      onClick={handleDeletePost}
-                    >
-                      <Trash2 size={17} />
-                      {isDeleting ? 'Menghapus...' : 'Hapus postingan'}
-                    </button>
-                  </>
-                ) : (
-                  <p className="px-3 py-2 text-sm font-medium text-gray-500">Tidak ada aksi tersedia.</p>
-                )}
+              <Avatar name={authorDisplayName} imageUrl={post.author.avatarUrl} />
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">{authorDisplayName}</h3>
+                <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleString('id-ID')} · publik</p>
               </div>
-            ) : null}
-          </div>
-        </div>
-        {isEditing ? (
-          <div className="mt-3 space-y-3">
-            <textarea
-              value={editContent}
-              onChange={(event) => setEditContent(event.target.value)}
-              rows={3}
-              className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-            <div className="flex justify-end gap-2">
+            </button>
+            <div className="relative" ref={actionsMenuRef}>
               <button
-                className="rounded-md bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-300"
-                onClick={() => {
-                  setEditContent(post.content)
-                  setIsEditing(false)
-                  setPostError(null)
-                }}
+                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                onClick={() => setIsActionsOpen((isOpen) => !isOpen)}
+                aria-label="Menu postingan"
               >
-                Batal
+                <MoreHorizontal size={20} />
               </button>
-              <button
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isSavingEdit || !editContent.trim()}
-                onClick={handleSaveEdit}
-              >
-                {isSavingEdit ? 'Menyimpan...' : 'Simpan'}
-              </button>
+              {isActionsOpen ? (
+                <div className="absolute right-0 top-10 z-20 w-52 rounded-lg bg-white p-2 shadow-xl ring-1 ring-black/10">
+                  {isOwner ? (
+                    <>
+                      <button
+                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-gray-800 hover:bg-gray-100"
+                        onClick={() => {
+                          setIsActionsOpen(false)
+                          setIsEditModalOpen(true)
+                        }}
+                      >
+                        <Pencil size={17} className="shrink-0" />
+                        Edit postingan
+                      </button>
+                      <button
+                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={isDeleting}
+                        onClick={handleDeletePost}
+                      >
+                        <Trash2 size={17} />
+                        {isDeleting ? 'Menghapus...' : 'Hapus postingan'}
+                      </button>
+                    </>
+                  ) : (
+                    <p className="px-3 py-2 text-sm font-medium text-gray-500">Tidak ada aksi tersedia.</p>
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>
-        ) : (
+
           <button className="mt-3 block w-full text-left text-sm leading-relaxed text-gray-800" onClick={onOpenDetail}>
             {post.content}
           </button>
-        )}
-        {postError ? <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{postError}</p> : null}
-      </div>
 
-      <button className="block w-full text-left" onClick={onOpenDetail}>
-        <PostMedia post={post} />
-      </button>
+          {postError ? <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{postError}</p> : null}
+        </div>
 
-      <div className="px-4 py-2">
-        <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm text-gray-500">
-          <span>👍 {likeCount}</span>
-          <button onClick={onOpenComments}>{post._count.comments} komentar</button>
+        <button className="block w-full text-left" onClick={onOpenDetail}>
+          <PostMedia post={post} />
+        </button>
+
+        <div className="px-4 py-2">
+          <div className="flex items-center justify-between border-b border-gray-200 pb-2 text-sm text-gray-500">
+            <span>👍 {likeCount}</span>
+            <button onClick={onOpenComments}>{post._count.comments} komentar</button>
+          </div>
+          <div className="grid grid-cols-2 gap-1 pt-1 text-sm font-semibold text-gray-600">
+            <button
+              className={`flex items-center justify-center gap-2 rounded-lg py-2 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 ${liked ? 'text-blue-600' : ''}`}
+              disabled={isUpdatingLike}
+              onClick={handleLike}
+            >
+              <svg viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-[19px]">
+                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+              </svg>
+              Suka
+            </button>
+            <button className="flex items-center justify-center gap-2 rounded-lg py-2 hover:bg-gray-100" onClick={onOpenComments}>
+              <MessageCircle size={19} /> Komentar
+            </button>
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-1 pt-1 text-sm font-semibold text-gray-600">
-          <button
-            className={`flex items-center justify-center gap-2 rounded-lg py-2 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 ${liked ? 'text-blue-600' : ''}`}
-            disabled={isUpdatingLike}
-            onClick={handleLike}
-          >
-            <ThumbsUp size={19} fill={liked ? 'currentColor' : 'none'} /> Suka
-          </button>
-          <button className="flex items-center justify-center gap-2 rounded-lg py-2 hover:bg-gray-100" onClick={onOpenComments}>
-            <MessageCircle size={19} /> Komentar
-          </button>
-        </div>
-      </div>
-    </article>
+      </article>
+
+      {isEditModalOpen && (
+        <PostEditModal
+          post={post}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={(updatedPost) => {
+            onPostUpdated(updatedPost)
+            setIsEditModalOpen(false)
+          }}
+        />
+      )}
+    </>
   )
 }

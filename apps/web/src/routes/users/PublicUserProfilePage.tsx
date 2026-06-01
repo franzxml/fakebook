@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FeedPost, PublicUser } from '@ppwl/shared'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { HomeTopBar } from '@/routes/home/components/HomeTopBar'
-import { HomeAvatar } from '@/routes/home/components/HomeAvatar'
+import { Avatar } from '@/components/Avatar'
 import { PostCard } from '@/routes/home/components/PostCard'
 import { PostDetailPage } from '@/routes/posts/PostDetailPage'
 import { fetchPublicUserProfile, getStoredUser } from '@/services/api'
@@ -72,36 +72,28 @@ export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
     }
   }, [userId])
 
+  function syncPost(postId: string, updater: (post: FeedPost) => FeedPost) {
+    setPosts((current) => current.map((p) => (p.id === postId ? updater(p) : p)))
+    setSelectedPost((current) => (current?.id === postId ? updater(current) : current))
+  }
+
   function handleLikeStatusChange(postId: string, nextLikeCount: number, nextLiked: boolean) {
-    const updatePost = (post: FeedPost): FeedPost => ({
+    syncPost(postId, (post) => ({
       ...post,
       likes: currentUser?.id && nextLiked ? [{ userId: currentUser.id }] : [],
-      _count: {
-        ...post._count,
-        likes: nextLikeCount,
-      },
-    })
-
-    setPosts((currentPosts) => currentPosts.map((post) => (post.id === postId ? updatePost(post) : post)))
-    setSelectedPost((currentPost) => (currentPost?.id === postId ? updatePost(currentPost) : currentPost))
+      _count: { ...post._count, likes: nextLikeCount },
+    }))
   }
 
   function handleCommentCountChange(postId: string, nextCommentCount: number) {
-    const updatePost = (post: FeedPost): FeedPost => ({
+    syncPost(postId, (post) => ({
       ...post,
-      _count: {
-        ...post._count,
-        comments: nextCommentCount,
-      },
-    })
-
-    setPosts((currentPosts) => currentPosts.map((post) => (post.id === postId ? updatePost(post) : post)))
-    setSelectedPost((currentPost) => (currentPost?.id === postId ? updatePost(currentPost) : currentPost))
+      _count: { ...post._count, comments: nextCommentCount },
+    }))
   }
 
   function handlePostUpdated(updatedPost: FeedPost) {
-    setPosts((currentPosts) => currentPosts.map((post) => (post.id === updatedPost.id ? updatedPost : post)))
-    setSelectedPost((currentPost) => (currentPost?.id === updatedPost.id ? updatedPost : currentPost))
+    syncPost(updatedPost.id, () => updatedPost)
   }
 
   function handlePostDeleted(postId: string) {
@@ -139,7 +131,7 @@ export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
           <>
             <section className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                <HomeAvatar name={displayName} imageUrl={profile.avatarUrl} size="h-16 w-16 sm:h-20 sm:w-20" />
+                <Avatar name={displayName} imageUrl={profile.avatarUrl} size="h-16 w-16 sm:h-20 sm:w-20" />
                 <div className="min-w-0 flex-1">
                   <h1 className="truncate text-2xl font-bold text-gray-950">{displayName}</h1>
                   {profile.bio ? (

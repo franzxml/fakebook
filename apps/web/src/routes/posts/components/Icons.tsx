@@ -39,24 +39,6 @@ export function CommentIcon({ className, style }: IconProps) {
   )
 }
 
-export function ShareIcon({ className, style }: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      style={style}
-    >
-      <path d="M16 5l6 6-6 6" />
-      <path d="M4 19c0-6 4.5-10 12-10" />
-    </svg>
-  )
-}
-
 export function SendIcon() {
   return (
     <svg
@@ -73,3 +55,21 @@ export function SendIcon() {
     </svg>
   )
 }
+
+export function CheckIcon({ className, style }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={style}
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+
