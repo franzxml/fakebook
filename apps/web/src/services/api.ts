@@ -315,11 +315,6 @@ export async function uploadImageFile(file: File, folder: 'avatars' | 'posts', t
   return upload.publicUrl
 }
 
-/* Ambil notifikasi dari backend untuk halaman list notifikasi */
-export async function fetchNotificationFeed(): Promise<NotificationsResponse> {
-  return apiRequest<NotificationsResponse>('/notifications/feed')
-}
-
 export async function fetchNotifications(token: string): Promise<NotificationsResponse> {
   return apiRequest<NotificationsResponse>('/notifications', { token })
 }

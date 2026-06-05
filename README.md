@@ -13,7 +13,7 @@ Laporan progress dapat diakses melalui tautan berikut:
 * Proteksi halaman privat agar hanya user login yang bisa masuk
 * Feed postingan dari database
 * Membuat, mengedit, dan menghapus postingan milik sendiri
-* Edit postingan termasuk ganti gambar langsung dari menu postingan
+* Edit postingan termasuk ganti gambar langsung dari menu tiga titik postingan
 * Upload gambar postingan melalui presigned URL S3 (maksimal 1 gambar)
 * Like dan unlike postingan
 * Status like tetap tersimpan setelah refresh
@@ -48,7 +48,8 @@ Laporan progress dapat diakses melalui tautan berikut:
 * Zustand
 * Elysia
 * Prisma 7
-* libSQL / Turso
+* libSQL / Turso (lokal & fallback production)
+* PostgreSQL / AWS RDS (production primary)
 * AWS S3
 * AWS CloudFront
 * AWS Lambda Function URL
@@ -65,18 +66,23 @@ fakebook/
 |   |-- api/
 |   |   |-- prisma/
 |   |   |   |-- migrations/
-|   |   |   |-- dev.db
-|   |   |   |-- schema.prisma
+|   |   |   |-- schema.prisma        ← SQLite (lokal dev)
+|   |   |   |-- schema-pg.prisma     ← PostgreSQL (production)
 |   |   |   `-- seed-home-feed.sql
 |   |   |-- scripts/
 |   |   |   `-- backfill-usernames.mjs
 |   |   |-- src/
 |   |   |   |-- db/
-|   |   |   |   `-- prisma.ts
-|   |   |   |-- generated/
+|   |   |   |   |-- index.ts         ← unified client (RDS → Turso fallback)
+|   |   |   |   |-- db.ts            ← libSQL/Turso client
+|   |   |   |   `-- dbPostgres.ts    ← PostgreSQL RDS client
+|   |   |   |-- generated/           ← hasil Prisma generate (tidak diedit)
 |   |   |   |-- http/
 |   |   |   |   |-- auth.ts
 |   |   |   |   `-- errors.ts
+|   |   |   |-- lib/
+|   |   |   |   |-- prismaSelects.ts ← shared Prisma select/include constants
+|   |   |   |   `-- userUtils.ts     ← username normalization & generation
 |   |   |   |-- realtime/
 |   |   |   |   `-- broadcast.ts
 |   |   |   |-- routes/
@@ -87,8 +93,12 @@ fakebook/
 |   |   |   |   |-- profile/
 |   |   |   |   |-- uploads/
 |   |   |   |   `-- users/
-|   |   |   |-- index.ts
-|   |   |   `-- ws-handler.ts
+|   |   |   |-- services/
+|   |   |   |   |-- commentService.ts
+|   |   |   |   |-- googleAuthService.ts
+|   |   |   |   `-- profileService.ts
+|   |   |   |-- index.ts             ← entry point HTTP Lambda
+|   |   |   `-- wsHandler.ts         ← entry point WebSocket Lambda
 |   |   |-- Dockerfile.lambda
 |   |   |-- package.json
 |   |   |-- prisma.config.ts
@@ -100,7 +110,7 @@ fakebook/
 |       |   `-- favicon.svg
 |       |-- src/
 |       |   |-- components/
-|       |   |   `-- Avatar.tsx
+|       |   |   `-- Avatar.tsx        ← shared avatar component lintas route
 |       |   |-- hooks/
 |       |   |   `-- useNotificationSync.ts
 |       |   |-- layouts/
@@ -108,11 +118,13 @@ fakebook/
 |       |   |-- lib/
 |       |   |   |-- navigation.ts
 |       |   |   |-- notificationDisplay.tsx
+|       |   |   |-- notificationUtils.ts
 |       |   |   |-- userDisplay.ts
 |       |   |   `-- validateImageFile.ts
 |       |   |-- routes/
 |       |   |   |-- auth/
 |       |   |   |   |-- components/
+|       |   |   |   |-- hooks/
 |       |   |   |   |-- ForgotPasswordPage.tsx
 |       |   |   |   |-- LoginPage.tsx
 |       |   |   |   `-- RegisterPage.tsx
@@ -268,8 +280,10 @@ fakebook/
 * `bun run typecheck:api` typecheck backend.
 * `bun run typecheck:web` typecheck frontend.
 * `bun run lint` menjalankan ESLint pada frontend.
-* `bun run prisma:generate` generate Prisma Client.
+* `bun run prisma:generate` generate Prisma Client dari schema SQLite (lokal).
+* `bun run prisma:generate:pg` generate Prisma Client dari schema PostgreSQL (production).
 * `bun run prisma:migrate` menjalankan migrasi database lokal.
+* `bun run prisma:migrate:pg` menjalankan migrasi database PostgreSQL production.
 * `bun run docker:build:api` build Docker image backend Lambda lokal.
 * `bun run deploy:web:s3` upload hasil build frontend ke AWS S3. Variabel `AWS_S3_BUCKET` harus tersedia.
 * `bun run deploy:web:invalidate` membuat invalidation CloudFront. Variabel `AWS_CLOUDFRONT_DISTRIBUTION_ID` harus tersedia.
@@ -302,6 +316,25 @@ aws lambda update-function-code \
   --function-name ppwl-clone-facebook-api \
   --region us-east-1 \
   --image-uri 722765871100.dkr.ecr.us-east-1.amazonaws.com/ppwl-clone-facebook-api:<tag>
+```
+
+### Database Production
+
+Database production menggunakan dua layer:
+
+1. **PostgreSQL RDS (primary)** — set `DATABASE_PG_URL` di Lambda environment.
+2. **Turso (fallback)** — set `DATABASE_URL` + `DATABASE_AUTH_TOKEN`. Aktif otomatis jika RDS tidak responsif dalam 3 detik.
+
+Generate Prisma Client PostgreSQL sebelum build Docker:
+
+```bash
+bun run prisma:generate:pg
+```
+
+Jalankan migrasi ke PostgreSQL RDS:
+
+```bash
+DATABASE_PG_URL="postgresql://..." bun run prisma:migrate:pg
 ```
 
 ## Domain Production
@@ -340,9 +373,13 @@ wss://8z4wlfa9cd.execute-api.us-east-1.amazonaws.com/prod
 * Folder `apps/web/src/routes` mengikuti domain halaman atau fitur.
 * Folder `components`, `hooks`, dan `utils` di dalam route dipakai untuk kode yang spesifik pada route tersebut.
 * Folder `apps/web/src/components` berisi komponen shared yang dipakai lintas route (misal `Avatar`).
+* Folder `apps/web/src/lib` berisi utility functions dan helpers yang dipakai lintas route.
 * Folder `apps/web/src/stores` berisi Zustand store dengan penamaan camelCase dan diekspor lewat `stores/index.ts`.
 * Folder `apps/web/public/images` digunakan untuk asset statis publik.
-* Folder `apps/api/src/routes` mengikuti resource API.
+* Folder `apps/api/src/routes` mengikuti resource API (resource-based routing).
+* Folder `apps/api/src/services` berisi business logic yang diekstrak dari route handlers.
+* Folder `apps/api/src/lib` berisi shared utility dipakai lintas route dan service.
+* Folder `apps/api/src/db` adalah database module — `index.ts` mengekspos unified client dengan fallback otomatis.
 * Folder `apps/api/src/generated` adalah hasil generate Prisma dan tidak diedit manual.
 * Folder `apps/api/prisma/migrations` mengikuti struktur Prisma dan tidak di-rename manual.
 

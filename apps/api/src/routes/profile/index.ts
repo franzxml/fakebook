@@ -1,17 +1,8 @@
 import { Elysia, t } from 'elysia'
-import { prisma } from '../../db/prisma'
-import { getCurrentUser, normalizeEmail, toPublicUser } from '../../http/auth'
+import { prisma } from '../../db'
+import { getCurrentUser, toPublicUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-
-function normalizeUsername(username: string) {
-  return username
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._]/g, '')
-    .replace(/[._]{2,}/g, '.')
-    .replace(/^[._]+|[._]+$/g, '')
-    .slice(0, 30)
-}
+import { validateProfileUpdate } from '../../services/profileService'
 
 export const profileRoutes = new Elysia({ prefix: '/profile' })
 
@@ -66,46 +57,16 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
         return errorPayload('Tidak ada data yang diperbarui.')
       }
 
-      const email = body.email ? normalizeEmail(body.email) : undefined
-      const username = body.username === undefined ? undefined : normalizeUsername(body.username)
-      const bio = body.bio === undefined ? undefined : body.bio.trim()
+      const result = await validateProfileUpdate(user.id, body)
 
-      if (email && email !== user.email) {
-        const existingUser = await prisma.user.findUnique({ where: { email } })
-        if (existingUser) {
-          set.status = 409
-          return errorPayload('Email sudah digunakan.')
-        }
-      }
-
-      if (username !== undefined) {
-        if (username.length < 3) {
-          set.status = 400
-          return errorPayload('Username minimal 3 karakter.')
-        }
-
-        const existingUsername = await prisma.user.findFirst({
-          where: {
-            username,
-            id: { not: user.id },
-          },
-        })
-
-        if (existingUsername) {
-          set.status = 409
-          return errorPayload('Username sudah digunakan.')
-        }
+      if (!result.ok) {
+        set.status = result.error.status
+        return errorPayload(result.error.message)
       }
 
       const updatedUser = await prisma.user.update({
         where: { id: user.id },
-        data: {
-          ...(body.name ? { name: body.name.trim() } : {}),
-          ...(username !== undefined ? { username } : {}),
-          ...(bio !== undefined ? { bio: bio || null } : {}),
-          ...(email ? { email } : {}),
-          ...(body.avatarUrl !== undefined ? { avatarUrl: body.avatarUrl } : {}),
-        },
+        data: result.data,
       })
 
       return { user: toPublicUser(updatedUser) }

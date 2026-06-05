@@ -1,18 +1,10 @@
 import { Elysia } from 'elysia'
-import { prisma } from '../../db/prisma'
+import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
+import { publicAuthorSelect } from '../../lib/prismaSelects'
 
 const usersAdminKey = process.env.ADMIN_USERS_KEY ?? 'your-secret-key'
-
-const publicAuthorSelect = {
-  id: true,
-  name: true,
-  username: true,
-  email: true,
-  avatarUrl: true,
-  bio: true,
-} as const
 
 export const userRoutes = new Elysia({ prefix: '/users' })
   .get('/', async ({ query, set }) => {

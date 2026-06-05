@@ -4,24 +4,9 @@ import type { PublicUser } from '@ppwl/shared'
 import { getStoredSession } from '@/services/api'
 import { getDisplayName } from '@/lib/userDisplay'
 import { getNotificationKind, getNotificationText } from '@/lib/notificationDisplay'
+import { getRelativeTime, groupNotificationsByRecency } from '@/lib/notificationUtils'
 import { useNotificationStore } from '@/stores'
 import type { AppNotification } from '@/types/social'
-
-function getRelativeTime(value: string) {
-  const diffMinutes = Math.max(Math.floor((Date.now() - new Date(value).getTime()) / 60000), 0)
-
-  if (diffMinutes < 1) return 'Baru saja'
-  if (diffMinutes < 60) return `${diffMinutes} menit`
-
-  const diffHours = Math.floor(diffMinutes / 60)
-  if (diffHours < 24) return `${diffHours} jam`
-
-  return `${Math.floor(diffHours / 24)} hari`
-}
-
-function isRecentNotification(notification: AppNotification) {
-  return Date.now() - new Date(notification.createdAt).getTime() < 1000 * 60 * 60 * 24 * 2
-}
 
 export function NotificationDropdown({ currentUser }: { currentUser?: PublicUser | null }) {
   const token = getStoredSession()?.token
@@ -34,9 +19,7 @@ export function NotificationDropdown({ currentUser }: { currentUser?: PublicUser
   const markEveryNotificationAsRead = useNotificationStore((state) => state.markAllAsRead)
   const [mode, setMode] = useState<'all' | 'unread'>('all')
 
-  const filteredItems = mode === 'unread' ? items.filter((notification) => !notification.isRead) : items
-  const newItems = filteredItems.filter(isRecentNotification)
-  const previousItems = filteredItems.filter((notification) => !isRecentNotification(notification))
+  const { recent: newItems, previous: previousItems, filtered: filteredItems } = groupNotificationsByRecency(items, mode)
 
   async function markAsRead(notificationId: string) {
     await markNotificationAsRead(notificationId, token ?? null)

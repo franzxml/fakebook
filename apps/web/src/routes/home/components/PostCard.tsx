@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import { MessageCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { MessageCircle } from 'lucide-react'
 import type { FeedPost, PublicUser } from '@ppwl/shared'
 import { deletePost, getStoredSession } from '@/services/api'
 import { getDisplayName } from '@/lib/userDisplay'
 import { Avatar } from '@/components/Avatar'
 import { PostEditModal } from '@/routes/posts/components/PostEditModal'
 import { usePostLike } from '@/routes/posts/hooks/usePostLike'
+import { PostActionsMenu } from './PostActionsMenu'
 
 function PostMedia({ post }: { post: FeedPost }) {
   const imageUrl = post.images[0]?.imageUrl
@@ -34,27 +35,15 @@ export function PostCard({
   onPostDeleted: (postId: string) => void
   onOpenAuthor?: () => void
 }) {
-  const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [postError, setPostError] = useState<string | null>(null)
-  const actionsMenuRef = useRef<HTMLDivElement>(null)
   const { handleLike, isUpdatingLike, likeCount, liked } = usePostLike({
     post,
     currentUserId: currentUser?.id,
     onLikeStatusChange: (nextLikeCount, nextLiked) => onLikeStatusChange(post.id, nextLikeCount, nextLiked),
   })
 
-  useEffect(() => {
-    if (!isActionsOpen) return
-    function handleClickOutside(event: MouseEvent) {
-      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
-        setIsActionsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isActionsOpen])
   const isOwner = Boolean(currentUser?.id && currentUser.id === post.author.id)
   const authorDisplayName = getDisplayName(post.author)
 
@@ -74,7 +63,6 @@ export function PostCard({
       setPostError(error instanceof Error ? error.message : 'Postingan gagal dihapus.')
     } finally {
       setIsDeleting(false)
-      setIsActionsOpen(false)
     }
   }
 
@@ -100,43 +88,12 @@ export function PostCard({
                 <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleString('id-ID')} · publik</p>
               </div>
             </button>
-            <div className="relative" ref={actionsMenuRef}>
-              <button
-                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
-                onClick={() => setIsActionsOpen((isOpen) => !isOpen)}
-                aria-label="Menu postingan"
-              >
-                <MoreHorizontal size={20} />
-              </button>
-              {isActionsOpen ? (
-                <div className="absolute right-0 top-10 z-20 w-52 rounded-lg bg-white p-2 shadow-xl ring-1 ring-black/10">
-                  {isOwner ? (
-                    <>
-                      <button
-                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-gray-800 hover:bg-gray-100"
-                        onClick={() => {
-                          setIsActionsOpen(false)
-                          setIsEditModalOpen(true)
-                        }}
-                      >
-                        <Pencil size={17} className="shrink-0" />
-                        Edit postingan
-                      </button>
-                      <button
-                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={isDeleting}
-                        onClick={handleDeletePost}
-                      >
-                        <Trash2 size={17} />
-                        {isDeleting ? 'Menghapus...' : 'Hapus postingan'}
-                      </button>
-                    </>
-                  ) : (
-                    <p className="px-3 py-2 text-sm font-medium text-gray-500">Tidak ada aksi tersedia.</p>
-                  )}
-                </div>
-              ) : null}
-            </div>
+            <PostActionsMenu
+              isOwner={isOwner}
+              isDeleting={isDeleting}
+              onEdit={() => setIsEditModalOpen(true)}
+              onDelete={handleDeletePost}
+            />
           </div>
 
           <button className="mt-3 block w-full text-left text-sm leading-relaxed text-gray-800" onClick={onOpenDetail}>

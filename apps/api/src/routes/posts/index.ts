@@ -1,17 +1,10 @@
 import { Elysia, t } from 'elysia'
-import { prisma } from '../../db/prisma'
+import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-import { broadcastRealtime } from '../../realtime/broadcast'
-
-const publicAuthorSelect = {
-  id: true,
-  name: true,
-  username: true,
-  email: true,
-  avatarUrl: true,
-  bio: true,
-} as const
+import { publicAuthorSelect, commentInclude } from '../../lib/prismaSelects'
+import { createComment } from '../../services/commentService'
+import { broadcastFeedChanged } from '../../realtime/broadcast'
 
 const postInclude = {
   author: { select: publicAuthorSelect },
@@ -35,14 +28,7 @@ const getPostIncludeForUser = (userId: string) => ({
 const getPostDetailIncludeForUser = (userId: string) => ({
   ...postInclude,
   comments: {
-    include: {
-      author: { select: publicAuthorSelect },
-      parentComment: {
-        include: {
-          author: { select: publicAuthorSelect },
-        },
-      },
-    },
+    include: commentInclude,
     orderBy: {
       createdAt: 'asc',
     },
@@ -55,21 +41,6 @@ const getPostDetailIncludeForUser = (userId: string) => ({
 
 const cleanImageUrls = (imageUrls: string[] | undefined) =>
   imageUrls?.map((imageUrl) => imageUrl.trim()).filter(Boolean) ?? []
-
-const commentInclude = {
-  author: { select: publicAuthorSelect },
-  parentComment: {
-    include: {
-      author: { select: publicAuthorSelect },
-    },
-  },
-} as const
-
-const broadcastFeedChanged = (reason: string, postId: string) => {
-  broadcastRealtime({ type: 'feed_changed', reason, postId }).catch((error) => {
-    console.error('Gagal broadcast realtime feed:', error)
-  })
-}
 
 export const postRoutes = new Elysia({ prefix: '/posts' })
   .get(
@@ -310,75 +281,29 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      const post = await prisma.post.findUnique({
-        where: { id: params.postId },
-        select: { userId: true },
-      })
-
-      if (!post) {
-        set.status = 404
-        return errorPayload('Postingan tidak ditemukan.')
-      }
-
-      let parentCommentId: string | undefined
-      let parentCommentOwnerId: string | undefined
-
-      if (body.parentCommentId) {
-        const parentComment = await prisma.comment.findUnique({
-          where: { id: body.parentCommentId },
-          select: {
-            id: true,
-            postId: true,
-            userId: true,
-            parentCommentId: true,
-          },
+      try {
+        const comment = await createComment({
+          postId: params.postId,
+          userId: user.id,
+          content: body.content,
+          parentCommentId: body.parentCommentId,
         })
 
-        if (!parentComment || parentComment.postId !== params.postId) {
+        if (!comment) {
+          set.status = 404
+          return errorPayload('Postingan tidak ditemukan.')
+        }
+
+        broadcastFeedChanged('comment_created', params.postId)
+        set.status = 201
+        return { comment }
+      } catch (err) {
+        if (err instanceof Error && err.message === 'PARENT_NOT_FOUND') {
           set.status = 404
           return errorPayload('Komentar yang dibalas tidak ditemukan.')
         }
-
-        parentCommentId = parentComment.parentCommentId ?? parentComment.id
-        parentCommentOwnerId = parentComment.userId
+        throw err
       }
-
-      const comment = await prisma.comment.create({
-        data: {
-          postId: params.postId,
-          userId: user.id,
-          parentCommentId,
-          content: body.content.trim(),
-        },
-        include: commentInclude,
-      })
-
-      if (parentCommentOwnerId && parentCommentOwnerId !== user.id) {
-        await prisma.notification.create({
-          data: {
-            recipientId: parentCommentOwnerId,
-            actorId: user.id,
-            postId: params.postId,
-            type: 'comment_reply',
-          },
-        })
-      }
-
-      if (post.userId !== user.id && post.userId !== parentCommentOwnerId) {
-        await prisma.notification.create({
-          data: {
-            recipientId: post.userId,
-            actorId: user.id,
-            postId: params.postId,
-            type: 'post_comment',
-          },
-        })
-      }
-
-      broadcastFeedChanged('comment_created', params.postId)
-
-      set.status = 201
-      return { comment }
     },
     {
       body: t.Object({

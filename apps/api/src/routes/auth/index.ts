@@ -1,5 +1,5 @@
 import { Elysia, t } from 'elysia'
-import { prisma } from '../../db/prisma'
+import { prisma } from '../../db'
 import {
   createSession,
   getCurrentUser,
@@ -9,125 +9,10 @@ import {
   toSessionPayload,
 } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-
-type GoogleTokenInfo = {
-  aud?: string
-  sub?: string
-  email?: string
-  email_verified?: string | boolean
-  name?: string
-  picture?: string
-}
-
-type GoogleUserInfo = {
-  sub?: string
-  email?: string
-  email_verified?: boolean
-  name?: string
-  picture?: string
-}
-
-type GoogleProfile = {
-  providerAccountId: string
-  email: string
-  name: string
-  avatarUrl: string | null
-}
+import { usernameFromProfile, createUniqueUsername } from '../../lib/userUtils'
+import { verifyGoogleCredential, verifyGoogleAccessToken, type GoogleProfile } from '../../services/googleAuthService'
 
 const RESET_TOKEN_DURATION_MS = 1000 * 60 * 30
-
-function normalizeUsername(username: string) {
-  return username
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._]/g, '')
-    .replace(/[._]{2,}/g, '.')
-    .replace(/^[._]+|[._]+$/g, '')
-    .slice(0, 30)
-}
-
-function usernameFromProfile(name: string, email: string) {
-  return normalizeUsername(name) || normalizeUsername(email.split('@')[0] ?? '') || 'user'
-}
-
-async function createUniqueUsername(baseUsername: string) {
-  const base = normalizeUsername(baseUsername) || 'user'
-  let candidate = base
-  let suffix = 1
-
-  while (await prisma.user.findUnique({ where: { username: candidate } })) {
-    suffix += 1
-    candidate = `${base.slice(0, Math.max(1, 30 - String(suffix).length - 1))}.${suffix}`
-  }
-
-  return candidate
-}
-
-async function verifyGoogleCredential(credential: string) {
-  const googleClientId = process.env.GOOGLE_CLIENT_ID
-
-  if (!googleClientId) {
-    throw new Error('GOOGLE_CLIENT_ID belum dikonfigurasi.')
-  }
-
-  const response = await fetch(
-    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
-  )
-
-  if (!response.ok) {
-    throw new Error('Credential Google tidak valid.')
-  }
-
-  const payload = await response.json() as GoogleTokenInfo
-
-  if (payload.aud !== googleClientId) {
-    throw new Error('Credential Google tidak sesuai dengan aplikasi ini.')
-  }
-
-  if (payload.email_verified !== true && payload.email_verified !== 'true') {
-    throw new Error('Email Google belum terverifikasi.')
-  }
-
-  if (!payload.sub || !payload.email || !payload.name) {
-    throw new Error('Profil Google tidak lengkap.')
-  }
-
-  return {
-    providerAccountId: payload.sub,
-    email: normalizeEmail(payload.email),
-    name: payload.name.trim(),
-    avatarUrl: payload.picture || null,
-  }
-}
-
-async function verifyGoogleAccessToken(accessToken: string): Promise<GoogleProfile> {
-  const response = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error('Credential Google tidak valid.')
-  }
-
-  const payload = await response.json() as GoogleUserInfo
-
-  if (payload.email_verified !== true) {
-    throw new Error('Email Google belum terverifikasi.')
-  }
-
-  if (!payload.sub || !payload.email || !payload.name) {
-    throw new Error('Profil Google tidak lengkap.')
-  }
-
-  return {
-    providerAccountId: payload.sub,
-    email: normalizeEmail(payload.email),
-    name: payload.name.trim(),
-    avatarUrl: payload.picture || null,
-  }
-}
 
 export const authRoutes = new Elysia({ prefix: '/auth' })
   .post(

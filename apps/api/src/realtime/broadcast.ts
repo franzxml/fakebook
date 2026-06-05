@@ -25,6 +25,16 @@ async function getConnectionIds() {
     .filter((connectionId): connectionId is string => Boolean(connectionId)) ?? []
 }
 
+/**
+ * Shorthand untuk broadcast perubahan feed ke semua koneksi aktif.
+ * Dipakai di route posts dan comments.
+ */
+export function broadcastFeedChanged(reason: string, postId: string) {
+  broadcastRealtime({ type: 'feed_changed', reason, postId }).catch((error) => {
+    console.error('Gagal broadcast realtime feed:', error)
+  })
+}
+
 export async function broadcastRealtime(payload: RealtimePayload) {
   if (!connectionsTable || !websocketEndpoint) return
 

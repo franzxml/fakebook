@@ -1,7 +1,7 @@
 import { cors } from '@elysiajs/cors'
 import { Elysia } from 'elysia'
 import { appMetadata, createHealthPayload, type ApiHealth } from '@ppwl/shared'
-import { prisma } from './db/prisma'
+import { prisma } from './db'
 import { authRoutes } from './routes/auth'
 import { commentRoutes } from './routes/comments'
 import { notificationRoutes } from './routes/notifications'

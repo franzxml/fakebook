@@ -1,19 +1,11 @@
 import { Elysia } from 'elysia'
-import { prisma } from '../../db/prisma'
+import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-
-const publicUserSelect = {
-  id: true,
-  name: true,
-  username: true,
-  email: true,
-  avatarUrl: true,
-  bio: true,
-} as const
+import { publicAuthorSelect } from '../../lib/prismaSelects'
 
 const notificationInclude = {
-  actor: { select: publicUserSelect },
+  actor: { select: publicAuthorSelect },
   post: {
     select: {
       id: true,

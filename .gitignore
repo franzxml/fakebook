@@ -1,12 +1,66 @@
-node_modules
-dist
+# ─── Dependencies ────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# ─── Build output ────────────────────────────────────────────────
+dist/
+build/
+out/
+
+# ─── Environment variables ───────────────────────────────────────
 .env
 .env.*
 !.env.example
-.DS_Store
-*.log
-*.tsbuildinfo
+
+# ─── Database (local dev only) ───────────────────────────────────
 apps/api/prisma/dev.db
 apps/api/prisma/dev.db-*
-apps/api/src/generated/prisma
+apps/api/prisma/dev.db-journal
+
+# ─── Prisma generated client ─────────────────────────────────────
+apps/api/src/generated/
+
+# ─── TypeScript build info ───────────────────────────────────────
+*.tsbuildinfo
+
+# ─── Logs ────────────────────────────────────────────────────────
+*.log
+*.log.*
+logs/
+npm-debug.log*
+yarn-debug.log*
+bun.error.log
+
+# ─── OS ──────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+
+# ─── Editor / IDE ────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Testing & coverage ──────────────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+
+# ─── Runtime / cache ─────────────────────────────────────────────
+.cache/
+.turbo/
+
+# ─── Secrets / certs ─────────────────────────────────────────────
+*.pem
+*.key
+
+# ─── Project-specific ────────────────────────────────────────────
 docs/rules.pdf

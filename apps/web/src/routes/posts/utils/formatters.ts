@@ -14,3 +14,20 @@ export function formatCount(count: number): string {
   if (count < 1000) return count.toString()
   return `${(count / 1000).toFixed(1).replace('.', ',').replace(',0', '')} rb`
 }
+
+export function groupRepliesByParent<T extends { id: string; parentCommentId: string | null }>(
+  comments: T[],
+): {
+  parentComments: T[]
+  repliesByParentId: Record<string, T[]>
+} {
+  const parentComments = comments.filter((c) => !c.parentCommentId)
+  const repliesByParentId = comments.reduce<Record<string, T[]>>((groups, comment) => {
+    if (comment.parentCommentId) {
+      groups[comment.parentCommentId] = [...(groups[comment.parentCommentId] ?? []), comment]
+    }
+    return groups
+  }, {})
+
+  return { parentComments, repliesByParentId }
+}

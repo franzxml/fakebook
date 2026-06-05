@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { getStoredSession } from '@/services/api'
 import { HomeTopBar } from '@/routes/home/components/HomeTopBar'
 import { getNotificationContent, getNotificationKind } from '@/lib/notificationDisplay'
+import { getRelativeTime, groupNotificationsByRecency } from '@/lib/notificationUtils'
 import { getDisplayName } from '@/lib/userDisplay'
 import { useAuthStore, useNotificationStore } from '@/stores'
 import type { AppNotification, PublicUser } from '@/types/social'
@@ -13,41 +14,6 @@ type NotificationsPageProps = {
 }
 
 type FilterMode = 'all' | 'unread'
-
-const fallbackTokenKeys = ['ppwl-session-token', 'ppwl-auth-token', 'sessionToken', 'token']
-
-function getStoredToken() {
-  if (typeof window === 'undefined') return null
-
-  const session = getStoredSession()
-  if (session?.token) return session.token
-
-  for (const key of fallbackTokenKeys) {
-    const token = window.localStorage.getItem(key)
-    if (token) return token
-  }
-
-  return null
-}
-
-function getRelativeTime(value: string) {
-  const diffMs = Date.now() - new Date(value).getTime()
-  const diffMinutes = Math.max(Math.floor(diffMs / 60000), 0)
-
-  if (diffMinutes < 1) return 'Baru saja'
-  if (diffMinutes < 60) return `${diffMinutes} menit`
-
-  const diffHours = Math.floor(diffMinutes / 60)
-  if (diffHours < 24) return `${diffHours} jam`
-
-  const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays} hari`
-}
-
-function isRecentNotification(notification: AppNotification) {
-  const diffMs = Date.now() - new Date(notification.createdAt).getTime()
-  return diffMs < 1000 * 60 * 60 * 24 * 2
-}
 
 function Avatar({ user }: { user: PublicUser | null }) {
   const initial = getDisplayName(user).charAt(0).toUpperCase()
@@ -110,7 +76,7 @@ function NotificationItem({
 }
 
 export function NotificationsPage({ notifications, token }: NotificationsPageProps) {
-  const authToken = token ?? getStoredToken()
+  const authToken = token ?? getStoredSession()?.token ?? null
   const currentUser = useAuthStore((state) => state.user)
   const storeItems = useNotificationStore((state) => state.notifications)
   const unreadCount = useNotificationStore((state) => state.unreadCount)
@@ -122,9 +88,7 @@ export function NotificationsPage({ notifications, token }: NotificationsPagePro
   const items = storeItems.length > 0 ? storeItems : notifications
   const [mode, setMode] = useState<FilterMode>('all')
 
-  const filteredItems = mode === 'unread' ? items.filter((notification) => !notification.isRead) : items
-  const newItems = filteredItems.filter(isRecentNotification)
-  const previousItems = filteredItems.filter((notification) => !isRecentNotification(notification))
+  const { recent: newItems, previous: previousItems, filtered: filteredItems } = groupNotificationsByRecency(items, mode)
 
   async function markAsRead(notificationId: string) {
     await markNotificationAsRead(notificationId, authToken)

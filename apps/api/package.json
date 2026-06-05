@@ -8,7 +8,13 @@
     "start": "bun src/index.ts",
     "build": "prisma generate && bun build src/index.ts --outdir dist --target bun",
     "typecheck": "prisma generate && tsc --noEmit",
-    "prisma": "prisma"
+    "prisma": "prisma",
+    "prisma:generate": "prisma generate",
+    "prisma:generate:pg": "prisma generate --schema prisma/schema-pg.prisma",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:pg": "prisma migrate deploy --schema prisma/schema-pg.prisma",
+    "prisma:studio": "prisma studio",
+    "prisma:studio:pg": "prisma studio --schema prisma/schema-pg.prisma"
   },
   "dependencies": {
     "@aws-sdk/client-apigatewaymanagementapi": "^3.1054.0",

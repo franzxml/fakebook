@@ -1,7 +1,7 @@
 import { Avatar } from '@/components/Avatar'
 import type { PostComment } from '@/types/social'
 import { getDisplayName } from '@/lib/userDisplay'
-import { formatRelativeTime } from '../utils/formatters'
+import { formatRelativeTime, groupRepliesByParent } from '../utils/formatters'
 
 type CommentListProps = {
   comments: PostComment[]
@@ -13,14 +13,7 @@ type CommentListProps = {
 }
 
 export function CommentList({ comments, currentUserId, onEdit, onDelete, onReply, isBusy = false }: CommentListProps) {
-  const parentComments = comments.filter((comment) => !comment.parentCommentId)
-  const repliesByParentId = comments.reduce<Record<string, PostComment[]>>((groups, comment) => {
-    if (comment.parentCommentId) {
-      groups[comment.parentCommentId] = [...(groups[comment.parentCommentId] ?? []), comment]
-    }
-
-    return groups
-  }, {})
+  const { parentComments, repliesByParentId } = groupRepliesByParent(comments)
 
   function renderComment(comment: PostComment, isReply = false) {
     const authorDisplayName = getDisplayName(comment.author)

@@ -1,32 +1,9 @@
 import { Elysia, t } from 'elysia'
-import { prisma } from '../../db/prisma'
+import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-import { broadcastRealtime } from '../../realtime/broadcast'
-
-const publicAuthorSelect = {
-  id: true,
-  name: true,
-  username: true,
-  email: true,
-  avatarUrl: true,
-  bio: true,
-} as const
-
-const commentInclude = {
-  author: { select: publicAuthorSelect },
-  parentComment: {
-    include: {
-      author: { select: publicAuthorSelect },
-    },
-  },
-} as const
-
-const broadcastFeedChanged = (reason: string, postId: string) => {
-  broadcastRealtime({ type: 'feed_changed', reason, postId }).catch((error) => {
-    console.error('Gagal broadcast realtime feed:', error)
-  })
-}
+import { commentInclude } from '../../lib/prismaSelects'
+import { broadcastFeedChanged } from '../../realtime/broadcast'
 
 export const commentRoutes = new Elysia({ prefix: '/comments' })
   .patch(
@@ -78,10 +55,10 @@ export const commentRoutes = new Elysia({ prefix: '/comments' })
       return errorPayload('Sesi tidak valid.')
     }
 
-      const comment = await prisma.comment.findUnique({
-        where: { id: params.commentId },
-        select: { postId: true, userId: true },
-      })
+    const comment = await prisma.comment.findUnique({
+      where: { id: params.commentId },
+      select: { postId: true, userId: true },
+    })
 
     if (!comment) {
       set.status = 404
