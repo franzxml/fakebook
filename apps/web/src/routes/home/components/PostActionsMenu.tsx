@@ -15,6 +15,7 @@ export function PostActionsMenu({ isOwner, isDeleting, onEdit, onDelete }: PostA
   useEffect(() => {
     if (!isOpen) return
     function handleClickOutside(event: MouseEvent) {
+      // as: event.target bertipe EventTarget; contains() butuh Node — click target di DOM selalu Node
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false)
       }

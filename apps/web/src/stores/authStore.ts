@@ -61,6 +61,7 @@ export function syncLegacyAuthStorage() {
       return
     }
 
+    // as: JSON.parse mengembalikan any; data ditulis sendiri oleh saveAuthSession
     setAuth(JSON.parse(rawUser) as PublicUser, JSON.parse(rawSession) as SessionPayload)
   } catch (error) {
     console.warn('[authStore] localStorage rusak, sesi dibersihkan:', error)

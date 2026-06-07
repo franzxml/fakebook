@@ -9,6 +9,7 @@ try {
   // Jalankan: bun run prisma:generate:pg
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mod = require('../generated/prisma-pg/client') as any
+  // as: modul dimuat secara dinamis sehingga TypeScript tidak bisa inferensi tipenya
   _createPgClient = () => new mod.PrismaClient() as PgPrismaClient
 } catch {
   // generated/prisma-pg belum ada

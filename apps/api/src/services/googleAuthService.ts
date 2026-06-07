@@ -45,6 +45,7 @@ export async function verifyGoogleCredential(credential: string): Promise<Google
 
   if (!response.ok) throw new Error('Credential Google tidak valid.')
 
+  // as: response.json() mengembalikan any; bentuk dijamin oleh Google tokeninfo API
   const payload = await response.json() as GoogleTokenInfo
 
   if (payload.aud !== googleClientId) throw new Error('Credential Google tidak sesuai dengan aplikasi ini.')
@@ -61,6 +62,7 @@ export async function verifyGoogleAccessToken(accessToken: string): Promise<Goog
 
   if (!response.ok) throw new Error('Credential Google tidak valid.')
 
+  // as: response.json() mengembalikan any; bentuk dijamin oleh Google userinfo API
   const payload = await response.json() as GoogleUserInfo
 
   if (payload.email_verified !== true) throw new Error('Email Google belum terverifikasi.')

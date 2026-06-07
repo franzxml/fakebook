@@ -117,6 +117,7 @@ export async function apiRequest<TResponse>(path: string, options: RequestOption
     throw new Error(message)
   }
 
+  // as: response.json() mengembalikan Promise<any>; bentuk respons dijamin oleh kontrak API
   return response.json() as Promise<TResponse>
 }
 
@@ -133,6 +134,7 @@ export function getStoredSession(): SessionPayload | null {
 
   try {
     const rawSession = localStorage.getItem('session')
+    // as: JSON.parse mengembalikan any; data ditulis sendiri via saveAuthSession
     return rawSession ? JSON.parse(rawSession) as SessionPayload : null
   } catch (error) {
     console.warn('[api] localStorage session rusak:', error)
@@ -146,6 +148,7 @@ export function getStoredUser(): PublicUser | null {
 
   try {
     const rawUser = localStorage.getItem('user')
+    // as: JSON.parse mengembalikan any; data ditulis sendiri via saveAuthSession
     return rawUser ? JSON.parse(rawUser) as PublicUser : null
   } catch (error) {
     console.warn('[api] localStorage user rusak:', error)
