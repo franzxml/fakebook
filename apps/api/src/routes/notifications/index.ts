@@ -1,4 +1,4 @@
-import { Elysia } from 'elysia'
+import { Elysia, t } from 'elysia'
 import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
@@ -81,31 +81,35 @@ export const notificationRoutes = new Elysia({ prefix: '/notifications' })
       updated: result.count,
     }
   })
-  .patch('/:notificationId/read', async ({ params, request, set }) => {
-    const user = await getCurrentUser(request.headers)
+  .patch(
+    '/:notificationId/read',
+    async ({ params, request, set }) => {
+      const user = await getCurrentUser(request.headers)
 
-    if (!user) {
-      set.status = 401
-      return errorPayload('Sesi tidak valid.')
-    }
+      if (!user) {
+        set.status = 401
+        return errorPayload('Sesi tidak valid.')
+      }
 
-    const notification = await prisma.notification.findFirst({
-      where: {
-        id: params.notificationId,
-        recipientId: user.id,
-      },
-    })
+      const notification = await prisma.notification.findFirst({
+        where: {
+          id: params.notificationId,
+          recipientId: user.id,
+        },
+      })
 
-    if (!notification) {
-      set.status = 404
-      return errorPayload('Notifikasi tidak ditemukan.')
-    }
+      if (!notification) {
+        set.status = 404
+        return errorPayload('Notifikasi tidak ditemukan.')
+      }
 
-    const updatedNotification = await prisma.notification.update({
-      where: { id: notification.id },
-      data: { isRead: true },
-      include: notificationInclude,
-    })
+      const updatedNotification = await prisma.notification.update({
+        where: { id: notification.id },
+        data: { isRead: true },
+        include: notificationInclude,
+      })
 
-    return { notification: updatedNotification }
-  })
+      return { notification: updatedNotification }
+    },
+    { params: t.Object({ notificationId: t.String() }) },
+  )

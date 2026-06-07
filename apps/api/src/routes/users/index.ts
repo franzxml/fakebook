@@ -1,4 +1,4 @@
-import { Elysia } from 'elysia'
+import { Elysia, t } from 'elysia'
 import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
@@ -38,48 +38,52 @@ export const userRoutes = new Elysia({ prefix: '/users' })
       },
     }
   })
-  .get('/:userId', async ({ params, request, set }) => {
-    const currentUser = await getCurrentUser(request.headers)
+  .get(
+    '/:userId',
+    async ({ params, request, set }) => {
+      const currentUser = await getCurrentUser(request.headers)
 
-    if (!currentUser) {
-      set.status = 401
-      return errorPayload('Sesi tidak valid.')
-    }
+      if (!currentUser) {
+        set.status = 401
+        return errorPayload('Sesi tidak valid.')
+      }
 
-    const user = await prisma.user.findUnique({
-      where: { id: params.userId },
-      select: {
-        ...publicAuthorSelect,
-        createdAt: true,
-        posts: {
-          include: {
-            author: { select: publicAuthorSelect },
-            images: true,
-            _count: {
-              select: {
-                comments: true,
-                likes: true,
+      const user = await prisma.user.findUnique({
+        where: { id: params.userId },
+        select: {
+          ...publicAuthorSelect,
+          createdAt: true,
+          posts: {
+            include: {
+              author: { select: publicAuthorSelect },
+              images: true,
+              _count: {
+                select: {
+                  comments: true,
+                  likes: true,
+                },
               },
             },
+            orderBy: {
+              createdAt: 'desc',
+            },
           },
-          orderBy: {
-            createdAt: 'desc',
+          _count: {
+            select: {
+              posts: true,
+              comments: true,
+              likes: true,
+            },
           },
         },
-        _count: {
-          select: {
-            posts: true,
-            comments: true,
-            likes: true,
-          },
-        },
-      },
-    })
+      })
 
-    if (!user) {
-      set.status = 404
-      return errorPayload('Pengguna tidak ditemukan.')
-    }
+      if (!user) {
+        set.status = 404
+        return errorPayload('Pengguna tidak ditemukan.')
+      }
 
-    return { user }
-  })
+      return { user }
+    },
+    { params: t.Object({ userId: t.String() }) },
+  )

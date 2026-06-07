@@ -122,26 +122,30 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
       }),
     },
   )
-  .get('/:postId', async ({ params, request, set }) => {
-    const user = await getCurrentUser(request.headers)
+  .get(
+    '/:postId',
+    async ({ params, request, set }) => {
+      const user = await getCurrentUser(request.headers)
 
-    if (!user) {
-      set.status = 401
-      return errorPayload('Sesi tidak valid.')
-    }
+      if (!user) {
+        set.status = 401
+        return errorPayload('Sesi tidak valid.')
+      }
 
-    const post = await prisma.post.findUnique({
-      where: { id: params.postId },
-      include: getPostDetailIncludeForUser(user.id),
-    })
+      const post = await prisma.post.findUnique({
+        where: { id: params.postId },
+        include: getPostDetailIncludeForUser(user.id),
+      })
 
-    if (!post) {
-      set.status = 404
-      return errorPayload('Postingan tidak ditemukan.')
-    }
+      if (!post) {
+        set.status = 404
+        return errorPayload('Postingan tidak ditemukan.')
+      }
 
-    return { post }
-  })
+      return { post }
+    },
+    { params: t.Object({ postId: t.String() }) },
+  )
   .patch(
     '/:postId',
     async ({ body, params, request, set }) => {
@@ -192,68 +196,77 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
       return { post: updatedPost }
     },
     {
+      params: t.Object({ postId: t.String() }),
       body: t.Object({
         content: t.Optional(t.String({ minLength: 1 })),
         imageUrls: t.Optional(t.Array(t.String({ minLength: 1 }))),
       }),
     },
   )
-  .delete('/:postId', async ({ params, request, set }) => {
-    const user = await getCurrentUser(request.headers)
+  .delete(
+    '/:postId',
+    async ({ params, request, set }) => {
+      const user = await getCurrentUser(request.headers)
 
-    if (!user) {
-      set.status = 401
-      return errorPayload('Sesi tidak valid.')
-    }
+      if (!user) {
+        set.status = 401
+        return errorPayload('Sesi tidak valid.')
+      }
 
-    const post = await prisma.post.findUnique({
-      where: { id: params.postId },
-      select: { userId: true },
-    })
+      const post = await prisma.post.findUnique({
+        where: { id: params.postId },
+        select: { userId: true },
+      })
 
-    if (!post) {
-      set.status = 404
-      return errorPayload('Postingan tidak ditemukan.')
-    }
+      if (!post) {
+        set.status = 404
+        return errorPayload('Postingan tidak ditemukan.')
+      }
 
-    if (post.userId !== user.id) {
-      set.status = 403
-      return errorPayload('Anda hanya dapat menghapus postingan milik sendiri.')
-    }
+      if (post.userId !== user.id) {
+        set.status = 403
+        return errorPayload('Anda hanya dapat menghapus postingan milik sendiri.')
+      }
 
-    await prisma.post.delete({ where: { id: params.postId } })
-    broadcastFeedChanged('post_deleted', params.postId)
+      await prisma.post.delete({ where: { id: params.postId } })
+      broadcastFeedChanged('post_deleted', params.postId)
 
-    return { success: true }
-  })
-  .get('/:postId/comments', async ({ params, request, set }) => {
-    const user = await getCurrentUser(request.headers)
+      return { success: true }
+    },
+    { params: t.Object({ postId: t.String() }) },
+  )
+  .get(
+    '/:postId/comments',
+    async ({ params, request, set }) => {
+      const user = await getCurrentUser(request.headers)
 
-    if (!user) {
-      set.status = 401
-      return errorPayload('Sesi tidak valid.')
-    }
+      if (!user) {
+        set.status = 401
+        return errorPayload('Sesi tidak valid.')
+      }
 
-    const post = await prisma.post.findUnique({
-      where: { id: params.postId },
-      select: { id: true },
-    })
+      const post = await prisma.post.findUnique({
+        where: { id: params.postId },
+        select: { id: true },
+      })
 
-    if (!post) {
-      set.status = 404
-      return errorPayload('Postingan tidak ditemukan.')
-    }
+      if (!post) {
+        set.status = 404
+        return errorPayload('Postingan tidak ditemukan.')
+      }
 
-    const comments = await prisma.comment.findMany({
-      where: { postId: params.postId },
-      include: commentInclude,
-      orderBy: {
-        createdAt: 'asc',
-      },
-    })
+      const comments = await prisma.comment.findMany({
+        where: { postId: params.postId },
+        include: commentInclude,
+        orderBy: {
+          createdAt: 'asc',
+        },
+      })
 
-    return { comments }
-  })
+      return { comments }
+    },
+    { params: t.Object({ postId: t.String() }) },
+  )
   .post(
     '/:postId/comments',
     async ({ body, params, request, set }) => {
@@ -289,76 +302,85 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
       }
     },
     {
+      params: t.Object({ postId: t.String() }),
       body: t.Object({
         content: t.String({ minLength: 1 }),
         parentCommentId: t.Optional(t.String({ minLength: 1 })),
       }),
     },
   )
-  .post('/:postId/likes', async ({ params, request, set }) => {
-    const user = await getCurrentUser(request.headers)
+  .post(
+    '/:postId/likes',
+    async ({ params, request, set }) => {
+      const user = await getCurrentUser(request.headers)
 
-    if (!user) {
-      set.status = 401
-      return errorPayload('Sesi tidak valid.')
-    }
+      if (!user) {
+        set.status = 401
+        return errorPayload('Sesi tidak valid.')
+      }
 
-    const post = await prisma.post.findUnique({
-      where: { id: params.postId },
-      select: { userId: true },
-    })
+      const post = await prisma.post.findUnique({
+        where: { id: params.postId },
+        select: { userId: true },
+      })
 
-    if (!post) {
-      set.status = 404
-      return errorPayload('Postingan tidak ditemukan.')
-    }
+      if (!post) {
+        set.status = 404
+        return errorPayload('Postingan tidak ditemukan.')
+      }
 
-    const like = await prisma.like.upsert({
-      where: {
-        postId_userId: {
+      const like = await prisma.like.upsert({
+        where: {
+          postId_userId: {
+            postId: params.postId,
+            userId: user.id,
+          },
+        },
+        update: {},
+        create: {
           postId: params.postId,
           userId: user.id,
         },
-      },
-      update: {},
-      create: {
-        postId: params.postId,
-        userId: user.id,
-      },
-    })
+      })
 
-    if (post.userId !== user.id) {
-      await prisma.notification.create({
-        data: {
-          recipientId: post.userId,
-          actorId: user.id,
+      if (post.userId !== user.id) {
+        await prisma.notification.create({
+          data: {
+            recipientId: post.userId,
+            actorId: user.id,
+            postId: params.postId,
+            type: 'post_like',
+          },
+        })
+      }
+
+      broadcastFeedChanged('post_liked', params.postId)
+
+      set.status = 201
+      return { like }
+    },
+    { params: t.Object({ postId: t.String() }) },
+  )
+  .delete(
+    '/:postId/likes',
+    async ({ params, request, set }) => {
+      const user = await getCurrentUser(request.headers)
+
+      if (!user) {
+        set.status = 401
+        return errorPayload('Sesi tidak valid.')
+      }
+
+      await prisma.like.deleteMany({
+        where: {
           postId: params.postId,
-          type: 'post_like',
+          userId: user.id,
         },
       })
-    }
 
-    broadcastFeedChanged('post_liked', params.postId)
+      broadcastFeedChanged('post_unliked', params.postId)
 
-    set.status = 201
-    return { like }
-  })
-  .delete('/:postId/likes', async ({ params, request, set }) => {
-    const user = await getCurrentUser(request.headers)
-
-    if (!user) {
-      set.status = 401
-      return errorPayload('Sesi tidak valid.')
-    }
-
-    await prisma.like.deleteMany({
-      where: {
-        postId: params.postId,
-        userId: user.id,
-      },
-    })
-
-    broadcastFeedChanged('post_unliked', params.postId)
-
-    return { success: true }
-  })
+      return { success: true }
+    },
+    { params: t.Object({ postId: t.String() }) },
+  )
