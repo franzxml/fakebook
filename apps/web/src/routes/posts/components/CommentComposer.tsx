@@ -50,6 +50,7 @@ export function CommentComposer({
           <input
             ref={inputRef}
             type="text"
+            aria-label={isEditing ? 'Edit komentar' : 'Tulis komentar'}
             value={value}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => event.key === 'Enter' && onSubmit()}

@@ -103,7 +103,7 @@ export function PostCard({
           {postError ? <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{postError}</p> : null}
         </div>
 
-        <button className="block w-full text-left" onClick={onOpenDetail}>
+        <button className="block w-full text-left" aria-label="Buka detail postingan" onClick={onOpenDetail}>
           <PostMedia post={post} />
         </button>
 
@@ -118,7 +118,7 @@ export function PostCard({
               disabled={isUpdatingLike}
               onClick={handleLike}
             >
-              <svg viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-[19px]">
+              <svg viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-[19px]" aria-hidden="true">
                 <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
               </svg>
               Suka

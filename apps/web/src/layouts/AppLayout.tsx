@@ -59,6 +59,7 @@ export function AppLayout({ children, aside, currentUser, currentPath = '' }: Ap
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
+                  aria-label={item.label}
                   title={item.label}
                   className={[
                     'flex flex-col items-center justify-center px-8 py-2 rounded-lg transition-colors',
@@ -88,6 +89,7 @@ export function AppLayout({ children, aside, currentUser, currentPath = '' }: Ap
                 </button>
                 <button
                   onClick={() => navigate('/auth')}
+                  aria-label="Keluar"
                   title="Keluar"
                   className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-red-500 transition-colors"
                 >
