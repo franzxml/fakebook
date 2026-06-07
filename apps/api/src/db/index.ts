@@ -9,7 +9,7 @@ const PG_CONNECT_TIMEOUT_MS = 3000
 async function resolvePrisma(): Promise<PrismaInstance> {
   if (!config.db.pgUrl) {
     const provider = config.db.authToken ? 'Turso' : 'SQLite lokal'
-    console.log(`[DB] Menggunakan ${provider}.`)
+    console.info(`[DB] Menggunakan ${provider}.`)
     return db
   }
 
@@ -27,7 +27,7 @@ async function resolvePrisma(): Promise<PrismaInstance> {
         setTimeout(() => reject(new Error('timeout')), PG_CONNECT_TIMEOUT_MS),
       ),
     ])
-    console.log('[DB] Menggunakan PostgreSQL RDS.')
+    console.info('[DB] Menggunakan PostgreSQL RDS.')
     return pgClient as unknown as PrismaInstance
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err)
