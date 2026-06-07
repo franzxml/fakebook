@@ -1,3 +1,4 @@
+import { config } from '../config'
 import { normalizeEmail } from '../http/auth'
 
 type GoogleTokenInfo = {
@@ -34,7 +35,7 @@ function buildProfile(sub: string, email: string, name: string, picture?: string
 }
 
 export async function verifyGoogleCredential(credential: string): Promise<GoogleProfile> {
-  const googleClientId = process.env.GOOGLE_CLIENT_ID
+  const googleClientId = config.google.clientId
 
   if (!googleClientId) throw new Error('GOOGLE_CLIENT_ID belum dikonfigurasi.')
 

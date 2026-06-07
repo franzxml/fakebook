@@ -1,13 +1,11 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { Elysia, t } from 'elysia'
+import { config } from '../../config'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
 
-const region = process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION ?? 'us-east-1'
-const uploadBucket = process.env.UPLOADS_BUCKET
-const publicBaseUrl = process.env.UPLOADS_PUBLIC_BASE_URL
-const s3 = new S3Client({ region })
+const s3 = new S3Client({ region: config.aws.region })
 
 const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 const extensionByType: Record<string, string> = {
@@ -22,11 +20,11 @@ function cleanFolder(folder: string) {
 }
 
 function publicUrlForKey(key: string) {
-  if (publicBaseUrl) {
-    return `${publicBaseUrl.replace(/\/$/, '')}/${key}`
+  if (config.aws.uploadsPublicBaseUrl) {
+    return `${config.aws.uploadsPublicBaseUrl.replace(/\/$/, '')}/${key}`
   }
 
-  return `https://${uploadBucket}.s3.${region}.amazonaws.com/${key}`
+  return `https://${config.aws.uploadsBucket}.s3.${config.aws.region}.amazonaws.com/${key}`
 }
 
 export const uploadRoutes = new Elysia({ prefix: '/uploads' })
@@ -40,7 +38,7 @@ export const uploadRoutes = new Elysia({ prefix: '/uploads' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      if (!uploadBucket) {
+      if (!config.aws.uploadsBucket) {
         set.status = 500
         return errorPayload('Bucket upload belum dikonfigurasi.')
       }
@@ -56,7 +54,7 @@ export const uploadRoutes = new Elysia({ prefix: '/uploads' })
       const uploadUrl = await getSignedUrl(
         s3,
         new PutObjectCommand({
-          Bucket: uploadBucket,
+          Bucket: config.aws.uploadsBucket,
           Key: key,
           ContentType: body.contentType,
         }),

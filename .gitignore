@@ -43,7 +43,8 @@ Thumbs.db
 Desktop.ini
 
 # ─── Editor / IDE ────────────────────────────────────────────────
-.vscode/
+.vscode/launch.json
+.vscode/*.code-snippets
 .idea/
 *.swp
 *.swo

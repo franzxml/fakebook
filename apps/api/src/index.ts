@@ -1,6 +1,7 @@
 import { cors } from '@elysiajs/cors'
 import { Elysia } from 'elysia'
 import { appMetadata, createHealthPayload, type ApiHealth } from '@ppwl/shared'
+import { config } from './config'
 import { prisma } from './db'
 import { authRoutes } from './routes/auth'
 import { commentRoutes } from './routes/comments'
@@ -10,14 +11,11 @@ import { profileRoutes } from './routes/profile'
 import { uploadRoutes } from './routes/uploads'
 import { userRoutes } from './routes/users'
 
-const port = Number(process.env.PORT ?? 3000)
-const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173'
-const allowedCorsOrigins = corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean)
-const isAwsLambda = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME)
+const allowedCorsOrigins = config.corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean)
 
 const app = new Elysia()
 
-if (!isAwsLambda) {
+if (!config.isAwsLambda) {
   app.use(cors({ origin: allowedCorsOrigins }))
 }
 
@@ -62,7 +60,7 @@ app
   .use(profileRoutes)
   .use(uploadRoutes)
   .use(userRoutes)
-  .listen(port)
+  .listen(config.port)
 
 console.info(
   `API ${appMetadata.name} berjalan di http://${app.server?.hostname ?? 'localhost'}:${app.server?.port}`,

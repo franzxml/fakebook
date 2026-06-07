@@ -16,19 +16,6 @@ const notificationInclude = {
 } as const
 
 export const notificationRoutes = new Elysia({ prefix: '/notifications' })
-  .get('/feed', async () => {
-    const notifications = await prisma.notification.findMany({
-      include: notificationInclude,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 20,
-    })
-
-    const unreadCount = notifications.filter((notification) => !notification.isRead).length
-
-    return { notifications, unreadCount }
-  })
   .get('/', async ({ request, set }) => {
     const user = await getCurrentUser(request.headers)
 

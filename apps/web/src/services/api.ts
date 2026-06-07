@@ -48,18 +48,8 @@ type PublicUserProfileResponse = {
   }
 }
 
-const defaultLocalApiUrl = 'http://localhost:3000'
-const productionApiUrl = 'https://2gtrnedjhmootg6bu5e24kwdmq0oyuns.lambda-url.us-east-1.on.aws'
 const configuredApiUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim()
-const isLocalBrowser = typeof window !== 'undefined'
-  ? ['localhost', '127.0.0.1'].includes(window.location.hostname)
-  : true
-
-const apiBaseUrl = configuredApiUrl && (isLocalBrowser || configuredApiUrl !== defaultLocalApiUrl)
-  ? configuredApiUrl
-  : isLocalBrowser
-    ? defaultLocalApiUrl
-    : productionApiUrl
+const apiBaseUrl = configuredApiUrl || 'http://localhost:3000'
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
@@ -187,7 +177,9 @@ export async function logout(token?: string) {
 }
 
 export async function fetchUsers(): Promise<UsersResponse> {
-  return apiRequest<UsersResponse>('/users?key=your-secret-key')
+  return apiRequest<UsersResponse>('/users', {
+    token: getStoredSession()?.token,
+  })
 }
 
 export async function fetchPublicUserProfile(userId: string): Promise<PublicUserProfileResponse> {

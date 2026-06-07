@@ -94,18 +94,23 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      if (!user.passwordHash) {
+      const userWithPassword = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { passwordHash: true },
+      })
+
+      if (!userWithPassword?.passwordHash) {
         set.status = 400
         return errorPayload('Akun Google tidak bisa ganti password di sini.')
       }
 
-      const isValid = await Bun.password.verify(body.currentPassword, user.passwordHash)
+      const isValid = await Bun.password.verify(body.currentPassword, userWithPassword.passwordHash)
       if (!isValid) {
         set.status = 401
         return errorPayload('Password saat ini tidak sesuai.')
       }
 
-      const isSame = await Bun.password.verify(body.newPassword, user.passwordHash)
+      const isSame = await Bun.password.verify(body.newPassword, userWithPassword.passwordHash)
       if (isSame) {
         set.status = 400
         return errorPayload('Password baru tidak boleh sama dengan yang lama.')

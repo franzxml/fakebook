@@ -1,9 +1,8 @@
 import { DynamoDBClient, DeleteItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb'
+import { config } from './config'
+import { prisma } from './db'
 
-const region = process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION ?? 'us-east-1'
-const connectionsTable = process.env.WEBSOCKET_CONNECTIONS_TABLE
-
-const dynamo = new DynamoDBClient({ region })
+const dynamo = new DynamoDBClient({ region: config.aws.region })
 
 type WebsocketEvent = {
   requestContext: {
@@ -20,7 +19,7 @@ function response(statusCode = 200, body = 'OK') {
 }
 
 export async function handler(event: WebsocketEvent) {
-  if (!connectionsTable) return response(500, 'WEBSOCKET_CONNECTIONS_TABLE missing')
+  if (!config.aws.websocketConnectionsTable) return response(500, 'WEBSOCKET_CONNECTIONS_TABLE missing')
 
   const { routeKey, connectionId, domainName, stage } = event.requestContext
 
@@ -29,11 +28,20 @@ export async function handler(event: WebsocketEvent) {
 
     if (!token) return response(401, 'Unauthorized')
 
+    const session = await prisma.session.findUnique({
+      where: { token },
+      select: { userId: true, expiresAt: true },
+    })
+
+    if (!session || session.expiresAt <= new Date()) {
+      return response(401, 'Unauthorized')
+    }
+
     await dynamo.send(new PutItemCommand({
-      TableName: connectionsTable,
+      TableName: config.aws.websocketConnectionsTable,
       Item: {
         connectionId: { S: connectionId },
-        userId: { S: 'connected' },
+        userId: { S: session.userId },
         domainName: { S: domainName ?? '' },
         stage: { S: stage ?? '' },
         ttl: { N: String(Math.floor(Date.now() / 1000) + 60 * 60 * 24) },
@@ -45,7 +53,7 @@ export async function handler(event: WebsocketEvent) {
 
   if (routeKey === '$disconnect') {
     await dynamo.send(new DeleteItemCommand({
-      TableName: connectionsTable,
+      TableName: config.aws.websocketConnectionsTable,
       Key: {
         connectionId: { S: connectionId },
       },

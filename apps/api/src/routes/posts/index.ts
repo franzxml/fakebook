@@ -86,23 +86,6 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
       }),
     },
   )
-  .get('/', async ({ request, set }) => {
-    const user = await getCurrentUser(request.headers)
-
-    if (!user) {
-      set.status = 401
-      return errorPayload('Sesi tidak valid.')
-    }
-
-    const posts = await prisma.post.findMany({
-      include: getPostIncludeForUser(user.id),
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
-
-    return { posts }
-  })
   .post(
     '/',
     async ({ body, request, set }) => {

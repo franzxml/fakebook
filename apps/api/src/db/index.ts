@@ -1,24 +1,14 @@
+import { config } from '../config'
 import { db } from './db'
 import { createPgClient } from './dbPostgres'
-
-/**
- * Unified database client.
- *
- * Urutan prioritas:
- * 1. PostgreSQL RDS (jika DATABASE_PG_URL tersedia dan dapat terhubung)
- * 2. Turso / SQLite lokal (fallback via DATABASE_URL)
- *
- * Timeout koneksi ke RDS: 3 detik.
- * Jika RDS tidak responsif dalam 3 detik, fallback ke Turso otomatis.
- */
 
 type PrismaInstance = typeof db
 
 const PG_CONNECT_TIMEOUT_MS = 3000
 
 async function resolvePrisma(): Promise<PrismaInstance> {
-  if (!process.env.DATABASE_PG_URL) {
-    const provider = process.env.DATABASE_AUTH_TOKEN ? 'Turso' : 'SQLite lokal'
+  if (!config.db.pgUrl) {
+    const provider = config.db.authToken ? 'Turso' : 'SQLite lokal'
     console.log(`[DB] Menggunakan ${provider}.`)
     return db
   }

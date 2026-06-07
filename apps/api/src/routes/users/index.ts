@@ -4,13 +4,13 @@ import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
 import { publicAuthorSelect } from '../../lib/prismaSelects'
 
-const usersAdminKey = process.env.ADMIN_USERS_KEY ?? 'your-secret-key'
-
 export const userRoutes = new Elysia({ prefix: '/users' })
-  .get('/', async ({ query, set }) => {
-    if (query.key !== usersAdminKey) {
-      set.status = 403
-      return errorPayload('Key tidak valid.')
+  .get('/', async ({ request, set }) => {
+    const currentUser = await getCurrentUser(request.headers)
+
+    if (!currentUser) {
+      set.status = 401
+      return errorPayload('Sesi tidak valid.')
     }
 
     const users = await prisma.user.findMany({
@@ -23,7 +23,6 @@ export const userRoutes = new Elysia({ prefix: '/users' })
             posts: true,
             comments: true,
             likes: true,
-            sessions: true,
           },
         },
       },

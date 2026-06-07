@@ -1,11 +1,8 @@
 import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi'
 import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb'
+import { config } from '../config'
 
-const region = process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION ?? 'us-east-1'
-const connectionsTable = process.env.WEBSOCKET_CONNECTIONS_TABLE
-const websocketEndpoint = process.env.WEBSOCKET_API_ENDPOINT
-
-const dynamo = new DynamoDBClient({ region })
+const dynamo = new DynamoDBClient({ region: config.aws.region })
 
 type RealtimePayload = {
   type: 'feed_changed' | 'notification'
@@ -13,10 +10,10 @@ type RealtimePayload = {
 }
 
 async function getConnectionIds() {
-  if (!connectionsTable) return []
+  if (!config.aws.websocketConnectionsTable) return []
 
   const response = await dynamo.send(new ScanCommand({
-    TableName: connectionsTable,
+    TableName: config.aws.websocketConnectionsTable,
     ProjectionExpression: 'connectionId',
   }))
 
@@ -36,14 +33,14 @@ export function broadcastFeedChanged(reason: string, postId: string) {
 }
 
 export async function broadcastRealtime(payload: RealtimePayload) {
-  if (!connectionsTable || !websocketEndpoint) return
+  if (!config.aws.websocketConnectionsTable || !config.aws.websocketApiEndpoint) return
 
   const connectionIds = await getConnectionIds()
   if (connectionIds.length === 0) return
 
   const client = new ApiGatewayManagementApiClient({
-    region,
-    endpoint: websocketEndpoint,
+    region: config.aws.region,
+    endpoint: config.aws.websocketApiEndpoint,
   })
   const data = new TextEncoder().encode(JSON.stringify(payload))
 
