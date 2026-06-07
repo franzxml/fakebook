@@ -14,7 +14,7 @@ export function getRelativeTime(value: string) {
   return `${Math.floor(diffHours / 24)} hari`
 }
 
-export function isRecentNotification(notification: AppNotification) {
+function isRecentNotification(notification: AppNotification) {
   return Date.now() - new Date(notification.createdAt).getTime() < TWO_DAYS_MS
 }
 

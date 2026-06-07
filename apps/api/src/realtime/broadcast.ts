@@ -32,7 +32,7 @@ export function broadcastFeedChanged(reason: string, postId: string) {
   })
 }
 
-export async function broadcastRealtime(payload: RealtimePayload) {
+async function broadcastRealtime(payload: RealtimePayload) {
   if (!config.aws.websocketConnectionsTable || !config.aws.websocketApiEndpoint) return
 
   const connectionIds = await getConnectionIds()
