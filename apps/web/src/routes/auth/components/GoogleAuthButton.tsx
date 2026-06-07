@@ -124,16 +124,18 @@ export function GoogleAuthButton({ mode, onAuthenticated }: GoogleAuthButtonProp
 
     let isActive = true
 
-    loadGoogleIdentityScript()
-      .then(() => {
+    async function load() {
+      try {
+        await loadGoogleIdentityScript()
         if (!isActive) return
-
         setIsReady(true)
-      })
-      .catch((scriptError) => {
+      } catch (scriptError) {
         if (!isActive) return
         setError(scriptError instanceof Error ? scriptError.message : 'Google OAuth gagal dimuat.')
-      })
+      }
+    }
+
+    void load()
 
     return () => {
       isActive = false
