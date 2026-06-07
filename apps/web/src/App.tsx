@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { appMetadata } from '@ppwl/shared'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -6,16 +6,15 @@ import { Toaster } from 'sonner'
 import { CheckCircle2 } from 'lucide-react'
 import { syncLegacyAuthStorage, useAuthStore } from '@/stores'
 import { useNotificationSync } from '@/hooks/useNotificationSync'
-import {
-  HomePage,
-  ForgotPasswordPage,
-  LoginPage,
-  NotificationsPage,
-  ProfilePage,
-  PublicUserProfilePage,
-  RegisterPage,
-  UsersPage,
-} from '@/routes'
+
+const ForgotPasswordPage = lazy(() => import('@/routes/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })))
+const LoginPage = lazy(() => import('@/routes/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
+const RegisterPage = lazy(() => import('@/routes/auth/RegisterPage').then((m) => ({ default: m.RegisterPage })))
+const HomePage = lazy(() => import('@/routes/home/HomePage').then((m) => ({ default: m.HomePage })))
+const NotificationsPage = lazy(() => import('@/routes/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage })))
+const ProfilePage = lazy(() => import('@/routes/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })))
+const PublicUserProfilePage = lazy(() => import('@/routes/users/PublicUserProfilePage').then((m) => ({ default: m.PublicUserProfilePage })))
+const UsersPage = lazy(() => import('@/routes/users/UsersPage').then((m) => ({ default: m.UsersPage })))
 
 const protectedPathPrefixes = ['/home', '/posts', '/notifications', '/profile', '/users']
 const queryClient = new QueryClient()
@@ -108,7 +107,9 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {page}
+      <Suspense fallback={<PageLoadingFallback />}>
+        {page}
+      </Suspense>
       {isWelcomeVisible && currentUser ? <WelcomePopup name={currentUser.name} /> : null}
       <Toaster richColors position="top-right" />
     </QueryClientProvider>
@@ -129,6 +130,14 @@ function WelcomePopup({ name }: { name: string }) {
           </p>
         </div>
       </div>
+    </div>
+  )
+}
+
+function PageLoadingFallback() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-[#f0f2f5]" role="status" aria-label="Memuat halaman">
+      <div className="size-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" aria-hidden="true" />
     </div>
   )
 }

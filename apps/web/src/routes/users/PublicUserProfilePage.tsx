@@ -52,20 +52,23 @@ export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
   useEffect(() => {
     let isMounted = true
 
-    fetchPublicUserProfile(userId)
-      .then((response) => {
+    async function load() {
+      try {
+        const response = await fetchPublicUserProfile(userId)
         if (!isMounted) return
         setProfileState({ userId, profile: response.user, error: null })
         setPosts(response.user.posts)
-      })
-      .catch((fetchError) => {
+      } catch (fetchError) {
         if (!isMounted) return
         setProfileState({
           userId,
           profile: null,
           error: fetchError instanceof Error ? fetchError.message : 'Gagal memuat profil pengguna.',
         })
-      })
+      }
+    }
+
+    void load()
 
     return () => {
       isMounted = false

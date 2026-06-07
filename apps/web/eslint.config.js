@@ -18,5 +18,10 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Legitimate patterns: guard clause early return in effects, and syncing async-loaded
+      // prop data into local form state (batched in React 18, one render).
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

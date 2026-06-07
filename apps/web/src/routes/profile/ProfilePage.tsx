@@ -68,13 +68,19 @@ export function ProfilePage() {
       return
     }
 
-    apiRequest<ProfileResponse>('/profile', { token })
-      .then((res) => {
+    async function load() {
+      try {
+        const res = await apiRequest<ProfileResponse>('/profile', { token })
         setProfile(res.profile)
         setStoredUser(res.profile)
-      })
-      .catch(() => setLoadError('Gagal memuat profil. Coba refresh halaman.'))
-      .finally(() => setIsLoading(false))
+      } catch {
+        setLoadError('Gagal memuat profil. Coba refresh halaman.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void load()
   }, [])
 
   if (isLoading) {

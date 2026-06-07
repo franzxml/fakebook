@@ -18,20 +18,21 @@ export function UsersPage({ users }: UsersPageProps) {
   useEffect(() => {
     let isMounted = true
 
-    fetchUsers()
-      .then((response) => {
+    async function load() {
+      try {
+        const response = await fetchUsers()
         if (!isMounted) return
         setAllUsers(response.users)
         setError(null)
-      })
-      .catch(() => {
+      } catch {
         if (!isMounted) return
         setError('Gagal memuat daftar pengguna.')
-      })
-      .finally(() => {
-        if (!isMounted) return
-        setIsLoading(false)
-      })
+      } finally {
+        if (isMounted) setIsLoading(false)
+      }
+    }
+
+    void load()
 
     return () => {
       isMounted = false

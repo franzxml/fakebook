@@ -47,22 +47,23 @@ export function usePostComments({
   useEffect(() => {
     let isMounted = true
 
-    fetchPostComments(postId)
-      .then((response) => {
+    async function load() {
+      try {
+        const response = await fetchPostComments(postId)
         if (!isMounted) return
         setCommentError(null)
         setComments(response.comments)
         onCommentCountChangeRef.current?.(response.comments.length)
-      })
-      .catch(() => {
+      } catch {
         if (!isMounted) return
         setCommentError('Gagal memuat komentar dari backend.')
         setComments([])
-      })
-      .finally(() => {
-        if (!isMounted) return
-        setIsLoadingComments(false)
-      })
+      } finally {
+        if (isMounted) setIsLoadingComments(false)
+      }
+    }
+
+    void load()
 
     return () => {
       isMounted = false
