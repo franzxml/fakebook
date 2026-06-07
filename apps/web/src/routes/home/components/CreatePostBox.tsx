@@ -65,6 +65,7 @@ export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
       <div className="flex gap-3">
         <AvatarCircle user={user} />
         <textarea
+          aria-label="Tulis postingan"
           value={content}
           onChange={(event) => setContent(event.target.value)}
           placeholder={`Apa yang kamu pikirkan, ${displayName.split(' ')[0]}?`}
