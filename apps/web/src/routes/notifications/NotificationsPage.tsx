@@ -35,7 +35,7 @@ function NotificationBadge({ type }: { type: string }) {
 
   return (
     <span className={`absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white text-white ${isComment ? 'bg-blue-600' : 'bg-[#1877f2]'}`}>
-      <Icon size={15} fill="currentColor" />
+      <Icon size={15} fill="currentColor" aria-hidden="true" />
     </span>
   )
 }
@@ -105,8 +105,8 @@ export function NotificationsPage({ notifications, token }: NotificationsPagePro
         <section className="w-full max-w-[430px] rounded-xl bg-white p-4 shadow-lg ring-1 ring-gray-200">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold tracking-tight">Notifikasi</h1>
-            <button className="grid h-9 w-9 place-items-center rounded-full text-gray-600 hover:bg-gray-100">
-              <MoreHorizontal size={20} />
+            <button className="grid h-9 w-9 place-items-center rounded-full text-gray-600 hover:bg-gray-100" aria-label="Opsi notifikasi">
+              <MoreHorizontal size={20} aria-hidden="true" />
             </button>
           </div>
 
@@ -132,7 +132,7 @@ export function NotificationsPage({ notifications, token }: NotificationsPagePro
               disabled={isUpdating || unreadCount === 0}
               onClick={markAllAsRead}
             >
-              <CheckCheck size={16} />
+              <CheckCheck size={16} aria-hidden="true" />
               Tandai semua
             </button>
           </div>
@@ -147,7 +147,7 @@ export function NotificationsPage({ notifications, token }: NotificationsPagePro
 
           {!isLoading && filteredItems.length === 0 ? (
             <div className="py-10 text-center">
-              <Bell className="mx-auto h-9 w-9 text-gray-400" />
+              <Bell className="mx-auto h-9 w-9 text-gray-400" aria-hidden="true" />
               <p className="mt-3 text-sm font-semibold text-gray-700">
                 {mode === 'unread' ? 'Tidak ada notifikasi belum dibaca' : 'Belum ada notifikasi'}
               </p>

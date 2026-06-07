@@ -177,7 +177,7 @@ fakebook/
 `-- tsconfig.base.json
 ```
 
-## Cara Menjalankan Lokal
+## Cara Menjalankan
 
 1. Pastikan komputer sudah memiliki **Bun**, **Git**, dan **Docker** jika ingin build image backend untuk Lambda.
 
@@ -227,7 +227,6 @@ fakebook/
    DATABASE_URL="file:./prisma/dev.db"
    PORT="3000"
    CORS_ORIGIN="http://localhost:5173"
-   ADMIN_USERS_KEY="your-secret-key"
    GOOGLE_CLIENT_ID="your-google-oauth-client-id.apps.googleusercontent.com"
    UPLOADS_BUCKET="fakebook-user-content-example"
    UPLOADS_PUBLIC_BASE_URL="https://fakebook-user-content-example.s3.us-east-1.amazonaws.com"
@@ -265,7 +264,7 @@ fakebook/
    http://localhost:3000
    ```
 
-## Script
+## Scripts
 
 * `bun run dev` menjalankan frontend dan backend secara bersamaan.
 * `bun run dev:web` menjalankan frontend Vite.
@@ -383,9 +382,7 @@ wss://8z4wlfa9cd.execute-api.us-east-1.amazonaws.com/prod
 * Folder `apps/api/src/generated` adalah hasil generate Prisma dan tidak diedit manual.
 * Folder `apps/api/prisma/migrations` mengikuti struktur Prisma dan tidak di-rename manual.
 
----
-
-Dikembangkan oleh:
+## Pengembang
 
 * @franzxml
 * @h1101241039-cmd

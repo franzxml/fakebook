@@ -124,7 +124,7 @@ export function PostCard({
               Suka
             </button>
             <button className="flex items-center justify-center gap-2 rounded-lg py-2 hover:bg-gray-100" onClick={onOpenComments}>
-              <MessageCircle size={19} /> Komentar
+              <MessageCircle size={19} aria-hidden="true" /> Komentar
             </button>
           </div>
         </div>

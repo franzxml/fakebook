@@ -65,3 +65,11 @@ app
 console.info(
   `API ${appMetadata.name} berjalan di http://${app.server?.hostname ?? 'localhost'}:${app.server?.port}`,
 )
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason)
+})
+
+process.on('uncaughtException', (error) => {
+  console.error('[uncaughtException]', error)
+})

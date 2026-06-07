@@ -120,7 +120,7 @@ function WelcomePopup({ name }: { name: string }) {
     <div className="fixed left-1/2 top-16 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-xl border border-blue-100 bg-white px-4 py-3 text-gray-950 shadow-xl shadow-blue-950/10">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-600">
-          <CheckCircle2 size={20} />
+          <CheckCircle2 size={20} aria-hidden="true" />
         </span>
         <div>
           <p className="text-sm font-bold">Selamat datang di Fakebook</p>

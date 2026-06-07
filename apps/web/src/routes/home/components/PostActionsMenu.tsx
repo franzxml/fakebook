@@ -30,7 +30,7 @@ export function PostActionsMenu({ isOwner, isDeleting, onEdit, onDelete }: PostA
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label="Menu postingan"
       >
-        <MoreHorizontal size={20} />
+        <MoreHorizontal size={20} aria-hidden="true" />
       </button>
 
       {isOpen && (
@@ -41,7 +41,7 @@ export function PostActionsMenu({ isOwner, isDeleting, onEdit, onDelete }: PostA
                 className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-gray-800 hover:bg-gray-100"
                 onClick={() => { setIsOpen(false); onEdit() }}
               >
-                <Pencil size={17} className="shrink-0" />
+                <Pencil size={17} className="shrink-0" aria-hidden="true" />
                 Edit postingan
               </button>
               <button
@@ -49,7 +49,7 @@ export function PostActionsMenu({ isOwner, isDeleting, onEdit, onDelete }: PostA
                 disabled={isDeleting}
                 onClick={onDelete}
               >
-                <Trash2 size={17} />
+                <Trash2 size={17} aria-hidden="true" />
                 {isDeleting ? 'Menghapus...' : 'Hapus postingan'}
               </button>
             </>

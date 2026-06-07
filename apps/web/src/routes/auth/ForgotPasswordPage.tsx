@@ -68,7 +68,7 @@ export function ForgotPasswordPage() {
           <form onSubmit={handleRequestReset} className="space-y-3">
             <label className="block">
               <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#606770]">
-                <Mail size={16} />
+                <Mail size={16} aria-hidden="true" />
                 Email
               </span>
               <input
@@ -85,7 +85,7 @@ export function ForgotPasswordPage() {
               disabled={isRequesting}
               className="inline-flex h-10 items-center gap-2 rounded-md bg-[#1877f2] px-5 text-sm font-bold text-white hover:bg-[#166fe5] disabled:opacity-60"
             >
-              {isRequesting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isRequesting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
               Buat token reset
             </button>
           </form>
@@ -100,7 +100,7 @@ export function ForgotPasswordPage() {
           <form onSubmit={handleResetPassword} className="space-y-3 border-t border-[#dadde1] pt-5">
             <label className="block">
               <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#606770]">
-                <KeyRound size={16} />
+                <KeyRound size={16} aria-hidden="true" />
                 Token
               </span>
               <input
@@ -115,7 +115,7 @@ export function ForgotPasswordPage() {
 
             <label className="block">
               <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#606770]">
-                <KeyRound size={16} />
+                <KeyRound size={16} aria-hidden="true" />
                 Password baru
               </span>
               <div className="relative">
@@ -130,10 +130,11 @@ export function ForgotPasswordPage() {
                 />
                 <button
                   type="button"
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                   onClick={() => setShowPassword((value) => !value)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[#606770]"
                 >
-                  {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+                  {showPassword ? <EyeOff size={19} aria-hidden="true" /> : <Eye size={19} aria-hidden="true" />}
                 </button>
               </div>
             </label>
@@ -157,7 +158,7 @@ export function ForgotPasswordPage() {
                 disabled={isResetting}
                 className="inline-flex h-10 items-center gap-2 rounded-md bg-[#1877f2] px-5 text-sm font-bold text-white hover:bg-[#166fe5] disabled:opacity-60"
               >
-                {isResetting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {isResetting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                 Reset password
               </button>
             </div>

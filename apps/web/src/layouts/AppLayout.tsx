@@ -18,10 +18,10 @@ type NavItem = {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Beranda', path: '/home', icon: <Home size={22} /> },
-  { label: 'Notifikasi', path: '/notifications', icon: <Bell size={22} /> },
-  { label: 'Pengguna', path: '/users', icon: <Users size={22} /> },
-  { label: 'Profil', path: '/profile', icon: <User size={22} /> },
+  { label: 'Beranda', path: '/home', icon: <Home size={22} aria-hidden="true" /> },
+  { label: 'Notifikasi', path: '/notifications', icon: <Bell size={22} aria-hidden="true" /> },
+  { label: 'Pengguna', path: '/users', icon: <Users size={22} aria-hidden="true" /> },
+  { label: 'Profil', path: '/profile', icon: <User size={22} aria-hidden="true" /> },
 ]
 
 export function AppLayout({ children, aside, currentUser, currentPath = '' }: AppLayoutProps) {
@@ -91,7 +91,7 @@ export function AppLayout({ children, aside, currentUser, currentPath = '' }: Ap
                   title="Keluar"
                   className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-red-500 transition-colors"
                 >
-                  <LogOut size={18} />
+                  <LogOut size={18} aria-hidden="true" />
                 </button>
               </>
             ) : (

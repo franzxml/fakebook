@@ -45,7 +45,7 @@ function StatusMessage({ message }: { message: { ok: boolean; text: string } | n
 
   return (
     <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${message.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-      {message.ok ? <Check className="mr-1 inline h-4 w-4" /> : null}
+      {message.ok ? <Check className="mr-1 inline h-4 w-4" aria-hidden="true" /> : null}
       {message.text}
     </p>
   )
@@ -79,8 +79,8 @@ export function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#f0f2f5]">
-        <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+      <div className="grid min-h-screen place-items-center bg-[#f0f2f5]" role="status" aria-label="Memuat profil">
+        <Loader2 className="h-7 w-7 animate-spin text-blue-600" aria-hidden="true" />
       </div>
     )
   }
@@ -144,7 +144,7 @@ export function ProfilePage() {
                 <AvatarPreview avatarUrl={previewAvatar} name={profileEdit.name || profile.name} size="h-20 w-20" />
                 <div className="flex-1 space-y-3">
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-gray-200 px-4 py-2 text-sm font-bold text-gray-900 hover:bg-gray-300">
-                    <Camera size={16} />
+                    <Camera size={16} aria-hidden="true" />
                     Upload foto
                     <input
                       type="file"
@@ -153,7 +153,7 @@ export function ProfilePage() {
                       onChange={(e) => profileEdit.handleAvatarFileChange(e.target.files?.[0])}
                     />
                   </label>
-                  <Field label="Avatar URL" icon={<Camera size={16} />}>
+                  <Field label="Avatar URL" icon={<Camera size={16} aria-hidden="true" />}>
                     <input
                       type="url"
                       value={profileEdit.avatarUrl}
@@ -165,7 +165,7 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              <Field label="Nama" icon={<User size={16} />}>
+              <Field label="Nama" icon={<User size={16} aria-hidden="true" />}>
                 <input
                   type="text"
                   value={profileEdit.name}
@@ -176,7 +176,7 @@ export function ProfilePage() {
                 />
               </Field>
 
-              <Field label="Username" icon={<User size={16} />}>
+              <Field label="Username" icon={<User size={16} aria-hidden="true" />}>
                 <input
                   type="text"
                   value={profileEdit.username}
@@ -187,7 +187,7 @@ export function ProfilePage() {
                 />
               </Field>
 
-              <Field label="Bio" icon={<User size={16} />}>
+              <Field label="Bio" icon={<User size={16} aria-hidden="true" />}>
                 <textarea
                   value={profileEdit.bio}
                   onChange={(e) => profileEdit.setBio(e.target.value)}
@@ -198,7 +198,7 @@ export function ProfilePage() {
                 />
               </Field>
 
-              <Field label="Email" icon={<Mail size={16} />}>
+              <Field label="Email" icon={<Mail size={16} aria-hidden="true" />}>
                 <input
                   type="email"
                   value={profileEdit.email}
@@ -216,7 +216,7 @@ export function ProfilePage() {
                 disabled={profileEdit.isSaving}
                 className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {profileEdit.isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {profileEdit.isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
                 Simpan perubahan
               </button>
             </form>
@@ -228,7 +228,7 @@ export function ProfilePage() {
             <p className="mt-1 text-sm text-gray-500">Ganti password akun manual Anda.</p>
 
             <form onSubmit={passwordChange.handleSave} className="mt-5 space-y-4">
-              <Field label="Password saat ini" icon={<KeyRound size={16} />}>
+              <Field label="Password saat ini" icon={<KeyRound size={16} aria-hidden="true" />}>
                 <div className="relative">
                   <input
                     type={passwordChange.showCurrent ? 'text' : 'password'}
@@ -239,15 +239,16 @@ export function ProfilePage() {
                   />
                   <button
                     type="button"
+                    aria-label={passwordChange.showCurrent ? 'Sembunyikan password' : 'Tampilkan password'}
                     onClick={() => passwordChange.setShowCurrent((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800"
                   >
-                    {passwordChange.showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {passwordChange.showCurrent ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
                   </button>
                 </div>
               </Field>
 
-              <Field label="Password baru" icon={<KeyRound size={16} />}>
+              <Field label="Password baru" icon={<KeyRound size={16} aria-hidden="true" />}>
                 <div className="relative">
                   <input
                     type={passwordChange.showNew ? 'text' : 'password'}
@@ -259,10 +260,11 @@ export function ProfilePage() {
                   />
                   <button
                     type="button"
+                    aria-label={passwordChange.showNew ? 'Sembunyikan password' : 'Tampilkan password'}
                     onClick={() => passwordChange.setShowNew((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800"
                   >
-                    {passwordChange.showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {passwordChange.showNew ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
                   </button>
                 </div>
                 <p className="mt-1 text-xs font-medium text-gray-500">Minimal 6 karakter</p>
@@ -275,7 +277,7 @@ export function ProfilePage() {
                 disabled={passwordChange.isSaving}
                 className="inline-flex items-center gap-2 rounded-md bg-gray-200 px-5 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {passwordChange.isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                {passwordChange.isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <KeyRound className="h-4 w-4" aria-hidden="true" />}
                 Perbarui password
               </button>
             </form>

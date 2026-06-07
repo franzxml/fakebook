@@ -115,13 +115,13 @@ export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
           className="mb-3 inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-bold text-gray-700 hover:bg-white"
           onClick={handleBack}
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={18} aria-hidden="true" />
           Kembali
         </button>
 
         {isLoading ? (
-          <section className="grid min-h-[240px] place-items-center rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
-            <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+          <section className="grid min-h-[240px] place-items-center rounded-xl bg-white shadow-sm ring-1 ring-gray-200" role="status" aria-label="Memuat profil">
+            <Loader2 className="h-7 w-7 animate-spin text-blue-600" aria-hidden="true" />
           </section>
         ) : error || !profile ? (
           <section className="rounded-xl bg-white p-5 text-sm font-semibold text-red-700 shadow-sm ring-1 ring-gray-200">

@@ -112,7 +112,7 @@ export function HomeTopBar({ currentPath = '/home', currentUser }: HomeTopBarPro
             className={`relative flex h-14 w-9 items-center justify-center rounded-md min-[375px]:w-10 sm:w-16 md:w-24 ${currentPath === '/home' ? 'text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`}
             aria-label="Beranda"
           >
-            <Home className="size-6 min-[375px]:size-[25px]" />
+            <Home className="size-6 min-[375px]:size-[25px]" aria-hidden="true" />
             {currentPath === '/home' ? <span className="absolute bottom-0 h-1 w-full rounded-t-full bg-blue-600" /> : null}
           </button>
           <button
@@ -121,7 +121,7 @@ export function HomeTopBar({ currentPath = '/home', currentUser }: HomeTopBarPro
             className={`relative flex h-14 w-9 items-center justify-center rounded-md min-[375px]:w-10 sm:w-16 md:w-24 ${currentPath === '/users' ? 'text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`}
             aria-label="Halaman pengguna"
           >
-            <UsersRound className="size-6 min-[375px]:size-[25px]" />
+            <UsersRound className="size-6 min-[375px]:size-[25px]" aria-hidden="true" />
             {currentPath === '/users' ? <span className="absolute bottom-0 h-1 w-full rounded-t-full bg-blue-600" /> : null}
           </button>
         </nav>
@@ -129,7 +129,7 @@ export function HomeTopBar({ currentPath = '/home', currentUser }: HomeTopBarPro
         <div className="flex items-center justify-end gap-1 sm:gap-2">
           <div ref={notificationAreaRef}>
             <IconButton title="Notifikasi" onClick={toggleNotificationDropdown}>
-              <Bell className="size-[18px] min-[375px]:size-5" />
+              <Bell className="size-[18px] min-[375px]:size-5" aria-hidden="true" />
               {unreadCount > 0 ? (
                 <span className="absolute -right-0.5 -top-0.5 min-w-5 rounded-full bg-red-600 px-1.5 text-center text-[11px] font-bold leading-5 text-white">
                   {unreadCount > 99 ? '99+' : unreadCount}
@@ -142,7 +142,7 @@ export function HomeTopBar({ currentPath = '/home', currentUser }: HomeTopBarPro
             <Avatar name={currentDisplayName} imageUrl={currentUser?.avatarUrl} size="h-8 w-8 min-[375px]:h-9 min-[375px]:w-9 sm:h-10 sm:w-10" />
           </button>
           <IconButton title="Logout" onClick={handleLogout}>
-            <LogOut className="size-[18px] min-[375px]:size-5" />
+            <LogOut className="size-[18px] min-[375px]:size-5" aria-hidden="true" />
           </IconButton>
         </div>
       </div>

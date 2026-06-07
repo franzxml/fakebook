@@ -85,7 +85,7 @@ export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
               setImagePreview(null)
             }}
           >
-            <X size={16} />
+            <X size={16} aria-hidden="true" />
           </button>
         </div>
       ) : null}
@@ -98,7 +98,7 @@ export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
             className="sr-only"
             onChange={(event) => handleImageChange(event.target.files?.[0])}
           />
-          <ImageIcon size={18} className="text-green-500" />
+          <ImageIcon size={18} className="text-green-500" aria-hidden="true" />
           Foto
         </label>
 
@@ -107,7 +107,7 @@ export function CreatePostBox({ user, onPostCreated }: CreatePostBoxProps) {
           disabled={(!content.trim() && !imagePreview) || isSubmitting}
           className="flex items-center gap-2 rounded-lg bg-[#1877f2] px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#166fe5] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Send size={15} />
+          <Send size={15} aria-hidden="true" />
           {isSubmitting ? 'Mengirim...' : 'Kirim'}
         </button>
       </div>

@@ -54,7 +54,7 @@ export function NotificationDropdown({ currentUser }: { currentUser?: PublicUser
             </span>
           )}
           <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full border-2 border-white bg-blue-600 text-white sm:h-7 sm:w-7">
-            {isCommentNotification ? <MessageCircle size={15} fill="currentColor" /> : <ThumbsUp size={15} fill="currentColor" />}
+            {isCommentNotification ? <MessageCircle size={15} fill="currentColor" aria-hidden="true" /> : <ThumbsUp size={15} fill="currentColor" aria-hidden="true" />}
           </span>
         </span>
         <span className="min-w-0 flex-1">
@@ -70,8 +70,8 @@ export function NotificationDropdown({ currentUser }: { currentUser?: PublicUser
     <section className="fixed left-2 right-2 top-16 z-50 max-h-[calc(100vh-4.75rem)] overflow-y-auto rounded-xl bg-white p-3 text-gray-950 shadow-2xl ring-1 ring-black/10 sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[390px] sm:p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Notifikasi</h2>
-        <button className="grid h-9 w-9 place-items-center rounded-full text-gray-600 hover:bg-gray-100">
-          <MoreHorizontal size={20} />
+        <button className="grid h-9 w-9 place-items-center rounded-full text-gray-600 hover:bg-gray-100" aria-label="Opsi notifikasi">
+          <MoreHorizontal size={20} aria-hidden="true" />
         </button>
       </div>
 
@@ -97,7 +97,7 @@ export function NotificationDropdown({ currentUser }: { currentUser?: PublicUser
           disabled={isUpdating || unreadCount === 0}
           onClick={markAllAsRead}
         >
-          <CheckCheck size={16} />
+          <CheckCheck size={16} aria-hidden="true" />
           Tandai semua
         </button>
       </div>
