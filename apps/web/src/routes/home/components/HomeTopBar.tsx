@@ -81,8 +81,8 @@ export function HomeTopBar({ currentPath = '/home', currentUser }: HomeTopBarPro
 
     try {
       await logout(token)
-    } catch {
-      // Tetap logout lokal kalau request server gagal.
+    } catch (error) {
+      console.warn('[HomeTopBar] Server logout gagal, tetap logout lokal:', error)
     } finally {
       setNotificationDropdownOpen(false)
       clearAuthSession()

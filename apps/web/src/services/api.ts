@@ -134,7 +134,8 @@ export function getStoredSession(): SessionPayload | null {
   try {
     const rawSession = localStorage.getItem('session')
     return rawSession ? JSON.parse(rawSession) as SessionPayload : null
-  } catch {
+  } catch (error) {
+    console.warn('[api] localStorage session rusak:', error)
     return null
   }
 }
@@ -146,7 +147,8 @@ export function getStoredUser(): PublicUser | null {
   try {
     const rawUser = localStorage.getItem('user')
     return rawUser ? JSON.parse(rawUser) as PublicUser : null
-  } catch {
+  } catch (error) {
+    console.warn('[api] localStorage user rusak:', error)
     return null
   }
 }
