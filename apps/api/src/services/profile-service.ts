@@ -1,6 +1,6 @@
 import { prisma } from '../db'
 import { normalizeEmail } from '../http/auth'
-import { normalizeUsername } from '../lib/userUtils'
+import { normalizeUsername } from '../lib/user-utils'
 
 type ProfileUpdateInput = {
   name?: string

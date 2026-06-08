@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { AppNotification } from '@ppwl/shared'
-import { useNotificationStore } from './notificationStore'
+import { useNotificationStore } from './notification-store'
 
 type RealtimeStore = {
   socketConnected: boolean

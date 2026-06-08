@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Home, Bell, Users, User, LogOut } from 'lucide-react'
 import type { PublicUser } from '@ppwl/shared'
 import { navigate } from '@/lib/navigation'
-import { getDisplayName } from '@/lib/userDisplay'
+import { getDisplayName } from '@/lib/user-display'
 
 type AppLayoutProps = {
   children: ReactNode

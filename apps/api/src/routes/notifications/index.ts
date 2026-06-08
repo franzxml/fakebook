@@ -2,7 +2,7 @@ import { Elysia, t } from 'elysia'
 import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-import { publicAuthorSelect } from '../../lib/prismaSelects'
+import { publicAuthorSelect } from '../../lib/prisma-selects'
 
 const notificationInclude = {
   actor: { select: publicAuthorSelect },

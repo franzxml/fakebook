@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { FeedPost, PublicUser } from '@ppwl/shared'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { HomeTopBar } from '@/routes/home/components/HomeTopBar'
+import { HomeTopBar } from '@/routes/home/components/home-top-bar'
 import { Avatar } from '@/components/Avatar'
-import { PostCard } from '@/routes/home/components/PostCard'
+import { PostCard } from '@/routes/home/components/post-card'
 import { PostDetailPage } from '@/routes/posts/PostDetailPage'
 import { fetchPublicUserProfile, getStoredUser } from '@/services/api'
 import { navigate } from '@/lib/navigation'
-import { getDisplayName } from '@/lib/userDisplay'
+import { getDisplayName } from '@/lib/user-display'
 
 type PublicUserProfilePageProps = {
   userId: string

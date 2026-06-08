@@ -2,8 +2,8 @@ import { Elysia, t } from 'elysia'
 import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-import { publicAuthorSelect, commentInclude } from '../../lib/prismaSelects'
-import { createComment } from '../../services/commentService'
+import { publicAuthorSelect, commentInclude } from '../../lib/prisma-selects'
+import { createComment } from '../../services/comment-service'
 import { broadcastFeedChanged } from '../../realtime/broadcast'
 
 const postInclude = {

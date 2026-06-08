@@ -2,7 +2,7 @@ import { Elysia, t } from 'elysia'
 import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-import { commentInclude } from '../../lib/prismaSelects'
+import { commentInclude } from '../../lib/prisma-selects'
 import { broadcastFeedChanged } from '../../realtime/broadcast'
 
 export const commentRoutes = new Elysia({ prefix: '/comments' })

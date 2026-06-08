@@ -1,5 +1,5 @@
 import { prisma } from '../db'
-import { commentInclude } from '../lib/prismaSelects'
+import { commentInclude } from '../lib/prisma-selects'
 
 type CreateCommentInput = {
   postId: string

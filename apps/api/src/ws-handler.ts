@@ -37,27 +37,36 @@ export async function handler(event: WebsocketEvent) {
       return response(401, 'Unauthorized')
     }
 
-    await dynamo.send(new PutItemCommand({
-      TableName: config.aws.websocketConnectionsTable,
-      Item: {
-        connectionId: { S: connectionId },
-        userId: { S: session.userId },
-        domainName: { S: domainName ?? '' },
-        stage: { S: stage ?? '' },
-        ttl: { N: String(Math.floor(Date.now() / 1000) + 60 * 60 * 24) },
-      },
-    }))
+    try {
+      await dynamo.send(new PutItemCommand({
+        TableName: config.aws.websocketConnectionsTable,
+        Item: {
+          connectionId: { S: connectionId },
+          userId: { S: session.userId },
+          domainName: { S: domainName ?? '' },
+          stage: { S: stage ?? '' },
+          ttl: { N: String(Math.floor(Date.now() / 1000) + 60 * 60 * 24) },
+        },
+      }))
+    } catch (err) {
+      console.error('DynamoDB PutItem failed:', err)
+      return response(500, 'Internal Server Error')
+    }
 
     return response()
   }
 
   if (routeKey === '$disconnect') {
-    await dynamo.send(new DeleteItemCommand({
-      TableName: config.aws.websocketConnectionsTable,
-      Key: {
-        connectionId: { S: connectionId },
-      },
-    }))
+    try {
+      await dynamo.send(new DeleteItemCommand({
+        TableName: config.aws.websocketConnectionsTable,
+        Key: {
+          connectionId: { S: connectionId },
+        },
+      }))
+    } catch (err) {
+      console.error('DynamoDB DeleteItem failed:', err)
+    }
 
     return response()
   }

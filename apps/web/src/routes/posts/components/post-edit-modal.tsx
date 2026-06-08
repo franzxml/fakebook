@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import type { FeedPost } from '@/types/social'
-import { usePostEdit } from '../hooks/usePostEdit'
+import { usePostEdit } from '../hooks/use-post-edit'
 
 type PostEditModalProps = {
   post: FeedPost

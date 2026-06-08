@@ -1,8 +1,8 @@
 import type { RefObject } from 'react'
 import { Avatar } from '@/components/Avatar'
 import type { PublicUser } from '@/types/social'
-import { getDisplayName } from '@/lib/userDisplay'
-import { CheckIcon, SendIcon } from './Icons'
+import { getDisplayName } from '@/lib/user-display'
+import { CheckIcon, SendIcon } from './icons'
 
 type CommentComposerProps = {
   currentUser: PublicUser | null

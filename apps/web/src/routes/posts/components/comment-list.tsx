@@ -1,6 +1,6 @@
 import { Avatar } from '@/components/Avatar'
 import type { PostComment } from '@/types/social'
-import { getDisplayName } from '@/lib/userDisplay'
+import { getDisplayName } from '@/lib/user-display'
 import { formatRelativeTime, groupRepliesByParent } from '../utils/formatters'
 
 type CommentListProps = {

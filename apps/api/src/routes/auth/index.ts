@@ -9,8 +9,8 @@ import {
   toSessionPayload,
 } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-import { usernameFromProfile, createUniqueUsername } from '../../lib/userUtils'
-import { verifyGoogleCredential, verifyGoogleAccessToken, type GoogleProfile } from '../../services/googleAuthService'
+import { usernameFromProfile, createUniqueUsername } from '../../lib/user-utils'
+import { verifyGoogleCredential, verifyGoogleAccessToken, type GoogleProfile } from '../../services/google-auth-service'
 
 const RESET_TOKEN_DURATION_MS = 1000 * 60 * 30
 

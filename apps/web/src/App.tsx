@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { CheckCircle2 } from 'lucide-react'
 import { syncLegacyAuthStorage, useAuthStore } from '@/stores'
-import { useNotificationSync } from '@/hooks/useNotificationSync'
+import { useNotificationSync } from '@/hooks/use-notification-sync'
 
 const ForgotPasswordPage = lazy(() => import('@/routes/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })))
 const LoginPage = lazy(() => import('@/routes/auth/LoginPage').then((m) => ({ default: m.LoginPage })))

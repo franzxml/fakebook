@@ -5,9 +5,9 @@ import { PostDetailPage } from '@/routes/posts/PostDetailPage'
 import { fetchFeed } from '@/services/api'
 import { navigate } from '@/lib/navigation'
 import { useFeedStore } from '@/stores'
-import { CreatePostBox } from './components/CreatePostBox'
-import { HomeTopBar } from './components/HomeTopBar'
-import { PostCard } from './components/PostCard'
+import { CreatePostBox } from './components/create-post-box'
+import { HomeTopBar } from './components/home-top-bar'
+import { PostCard } from './components/post-card'
 
 const FEED_REALTIME_INTERVAL_MS = 3000
 const FEED_PAGE_SIZE = 50

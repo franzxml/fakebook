@@ -1,6 +1,6 @@
 import { config } from '../config'
 import { db } from './db'
-import { createPgClient } from './dbPostgres'
+import { createPgClient } from './db-postgres'
 
 type PrismaInstance = typeof db
 

@@ -1,6 +1,6 @@
 import { Avatar } from '@/components/Avatar'
 import type { FeedPost } from '@/types/social'
-import { getDisplayName } from '@/lib/userDisplay'
+import { getDisplayName } from '@/lib/user-display'
 
 type PostBodyProps = {
   post: FeedPost

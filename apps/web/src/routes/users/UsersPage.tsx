@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { PublicUser } from '@/types/social'
 import { fetchUsers, getStoredUser } from '@/services/api'
-import { HomeTopBar } from '@/routes/home/components/HomeTopBar'
-import { getDisplayName } from '@/lib/userDisplay'
+import { HomeTopBar } from '@/routes/home/components/home-top-bar'
+import { getDisplayName } from '@/lib/user-display'
 import { navigate } from '@/lib/navigation'
 
 type UsersPageProps = {

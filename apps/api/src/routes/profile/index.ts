@@ -2,7 +2,7 @@ import { Elysia, t } from 'elysia'
 import { prisma } from '../../db'
 import { getCurrentUser, toPublicUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-import { validateProfileUpdate } from '../../services/profileService'
+import { validateProfileUpdate } from '../../services/profile-service'
 
 export const profileRoutes = new Elysia({ prefix: '/profile' })
 

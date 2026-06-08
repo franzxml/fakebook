@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { MessageCircle } from 'lucide-react'
 import type { FeedPost, PublicUser } from '@ppwl/shared'
 import { deletePost, getStoredSession } from '@/services/api'
-import { getDisplayName } from '@/lib/userDisplay'
+import { getDisplayName } from '@/lib/user-display'
 import { Avatar } from '@/components/Avatar'
-import { PostEditModal } from '@/routes/posts/components/PostEditModal'
-import { usePostLike } from '@/routes/posts/hooks/usePostLike'
-import { PostActionsMenu } from './PostActionsMenu'
+import { PostEditModal } from '@/routes/posts/components/post-edit-modal'
+import { usePostLike } from '@/routes/posts/hooks/use-post-like'
+import { PostActionsMenu } from './post-actions-menu'
 
 function PostMedia({ post }: { post: FeedPost }) {
   const imageUrl = post.images[0]?.imageUrl

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { AppNotification } from '@/types/social'
-import { getDisplayName } from './userDisplay'
+import { getDisplayName } from './user-display'
 
 export function getNotificationKind(notification: Pick<AppNotification, 'type'>) {
   return notification.type === 'post_like' ? 'like' : 'comment'

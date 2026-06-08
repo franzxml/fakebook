@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Camera, Check, Eye, EyeOff, KeyRound, Loader2, Mail, Save, User } from 'lucide-react'
 import { apiRequest, getStoredSession, getStoredUser } from '@/services/api'
-import { HomeTopBar } from '@/routes/home/components/HomeTopBar'
+import { HomeTopBar } from '@/routes/home/components/home-top-bar'
 import type { PublicUser } from '@/types/social'
-import { usePasswordChange } from './hooks/usePasswordChange'
-import { useProfileEdit } from './hooks/useProfileEdit'
+import { usePasswordChange } from './hooks/use-password-change'
+import { useProfileEdit } from './hooks/use-profile-edit'
 
 type ProfileFull = PublicUser & {
   createdAt: string

@@ -1,5 +1,5 @@
 import { formatCount } from '../utils/formatters'
-import { CommentIcon, LikeIcon } from './Icons'
+import { CommentIcon, LikeIcon } from './icons'
 
 type EngagementBarProps = {
   liked: boolean

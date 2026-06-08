@@ -3,11 +3,11 @@ import type { ReactNode } from 'react'
 import { Bell, Home, LogOut, UsersRound } from 'lucide-react'
 import type { PublicUser } from '@ppwl/shared'
 import { navigate, notifyAuthStorageChanged } from '@/lib/navigation'
-import { getDisplayName } from '@/lib/userDisplay'
+import { getDisplayName } from '@/lib/user-display'
 import { clearAuthSession, getStoredSession, logout } from '@/services/api'
 import { useNotificationStore, useUIStore } from '@/stores'
 import { Avatar } from '@/components/Avatar'
-import { NotificationDropdown } from './NotificationDropdown'
+import { NotificationDropdown } from './notification-dropdown'
 
 type HomeTopBarProps = {
   currentPath?: '/home' | '/users' | '/profile' | '/notifications'

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiRequest, getStoredSession, uploadImageFile } from '@/services/api'
 import { notifyAuthStorageChanged } from '@/lib/navigation'
-import { validateImageFile } from '@/lib/validateImageFile'
+import { validateImageFile } from '@/lib/validate-image-file'
 import type { PublicUser } from '@/types/social'
 
 type ProfileFull = PublicUser & {
