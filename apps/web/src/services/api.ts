@@ -1,4 +1,4 @@
-import type { AuthResponse, FeedPost, PublicUser, SessionPayload } from '@ppwl/shared'
+import type { AuthResponse, FeedPost, PublicAuthor, PublicUser, SessionPayload } from '@ppwl/shared'
 import type { NotificationsResponse } from '@ppwl/shared'
 import type { PostComment } from '@/types/social'
 import { useAuthStore } from '@/stores'
@@ -30,14 +30,14 @@ type CreateCommentResponse = {
 }
 
 type UsersResponse = {
-  users: PublicUser[]
+  users: PublicAuthor[]
   meta: {
     total: number
   }
 }
 
 type PublicUserProfileResponse = {
-  user: PublicUser & {
+  user: PublicAuthor & {
     createdAt: string
     posts: FeedPost[]
     _count: {
@@ -234,6 +234,13 @@ export async function fetchFeed(page = 1, limit = 10): Promise<FeedResponse> {
   })
 }
 
+/* Ambil satu postingan beserta komentarnya (untuk halaman detail /posts/:id) */
+export async function fetchPostDetail(postId: string): Promise<{ post: FeedPost & { comments: PostComment[] } }> {
+  return apiRequest<{ post: FeedPost & { comments: PostComment[] } }>(`/posts/${postId}`, {
+    token: getStoredSession()?.token,
+  })
+}
+
 /* Ambil komentar postingan untuk modal/detail postingan */
 export async function fetchPostComments(postId: string): Promise<PostCommentsResponse> {
   return apiRequest<PostCommentsResponse>(`/posts/${postId}/comments`, {
@@ -294,6 +301,7 @@ export async function uploadImageFile(file: File, folder: 'avatars' | 'posts', t
     body: {
       contentType: file.type,
       folder,
+      fileSize: file.size,
     },
   })
 

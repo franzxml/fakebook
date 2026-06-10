@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronLeft, CircleAlert, CircleHelp, Eye, EyeOff } from 'lucide-react'
-import { GoogleAuthButton } from './components/GoogleAuthButton'
+import { GoogleAuthButton } from './components/google-auth-button'
 import { useRegisterForm } from './hooks/use-register-form'
 
 const days = Array.from({ length: 31 }, (_, index) => String(index + 1))

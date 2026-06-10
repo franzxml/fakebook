@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { Avatar } from '@/components/Avatar'
+import { Avatar } from '@/components/avatar'
 import type { PublicUser } from '@/types/social'
 import { getDisplayName } from '@/lib/user-display'
 import { CheckIcon, SendIcon } from './icons'
@@ -33,19 +33,15 @@ export function CommentComposer({
 
   return (
     <div
-      className="shrink-0 bg-white px-4 py-3"
-      style={{ borderTop: isEditing ? '1px solid #E3F0FF' : '1px solid #DADDE1', backgroundColor: isEditing ? '#F0F7FF' : 'white' }}
+      className={`shrink-0 border-t px-4 py-3 ${isEditing ? 'border-fb-edit-divider bg-fb-edit-surface' : 'border-fb-divider bg-white'}`}
     >
       <div className="flex items-start gap-2">
         <Avatar imageUrl={currentUser?.avatarUrl} name={displayName} size="size-8" />
 
         <div
-          className="flex flex-1 flex-col rounded-[18px] px-3 py-2"
-          style={{
-            backgroundColor: isEditing ? '#DBEAFE' : '#F0F2F5',
-            opacity: isAtLimit ? 0.6 : 1,
-            border: isEditing ? '1.5px solid #93C5FD' : 'none',
-          }}
+          className={`flex flex-1 flex-col rounded-[18px] px-3 py-2 ${
+            isEditing ? 'border-[1.5px] border-blue-300 bg-blue-100' : 'bg-fb-surface'
+          } ${isAtLimit ? 'opacity-60' : ''}`}
         >
           <input
             ref={inputRef}
@@ -56,16 +52,14 @@ export function CommentComposer({
             onKeyDown={(event) => event.key === 'Enter' && onSubmit()}
             placeholder={isAtLimit ? `Batas ${maxComments} komentar tercapai` : placeholder ?? `Komentar sebagai ${displayName}...`}
             disabled={isAtLimit || !currentUser}
-            className="w-full bg-transparent text-[14px] outline-none disabled:cursor-not-allowed"
-            style={{ color: '#050505' }}
+            className="w-full bg-transparent text-[14px] text-fb-text outline-none disabled:cursor-not-allowed"
           />
 
           <div className="mt-2 flex justify-end pt-1">
             <button
               onClick={onSubmit}
               disabled={!value.trim() || isSubmitting || isAtLimit}
-              className="px-1 transition-opacity focus:outline-none disabled:opacity-30"
-              style={{ color: '#1877F2' }}
+              className="px-1 text-fb-blue transition-opacity focus:outline-none disabled:opacity-30"
               aria-label={isEditing ? 'Simpan' : 'Kirim'}
             >
               {isEditing ? <CheckIcon className="size-4" /> : <SendIcon />}

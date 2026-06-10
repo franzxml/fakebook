@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FeedPost, PublicUser } from '@ppwl/shared'
 import { useQuery } from '@tanstack/react-query'
-import { PostDetailPage } from '@/routes/posts/PostDetailPage'
+import { PostDetailPage } from '@/routes/posts/post-detail-page'
 import { fetchFeed } from '@/services/api'
 import { navigate } from '@/lib/navigation'
 import { useFeedStore } from '@/stores'

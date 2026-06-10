@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Image as ImageIcon, Send, X } from 'lucide-react'
 import type { PublicUser } from '@ppwl/shared'
-import { AvatarCircle } from '@/layouts/AppLayout'
+import { AvatarCircle } from '@/layouts/app-layout'
 import { getDisplayName } from '@/lib/user-display'
 import { validateImageFile } from '@/lib/validate-image-file'
 import { createPost, getStoredSession, uploadImageFile } from '@/services/api'

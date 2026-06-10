@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { AppLayout } from '@/layouts/AppLayout'
+import { AppLayout } from '@/layouts/app-layout'
 import { getStoredUser } from '@/services/api'
 import { getDisplayName } from '@/lib/user-display'
 import type { FeedPost, PostComment } from '@/types/social'
@@ -119,12 +119,7 @@ export function PostDetailPage({
 
   const content = (
     <div
-      className="relative flex max-h-[92vh] w-full max-w-[650px] flex-col overflow-hidden bg-white"
-      style={{
-        boxShadow: '0 12px 28px rgba(0,0,0,0.18)',
-        fontFamily: 'Arial, system-ui, Helvetica, sans-serif',
-        borderRadius: '12px',
-      }}
+      className="relative flex max-h-[92vh] w-full max-w-[650px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_12px_28px_rgb(0_0_0/0.18)]"
       onClick={stopPropagation}
     >
       <ModalHeader authorName={authorDisplayName} onClose={onClose} />
@@ -142,7 +137,7 @@ export function PostDetailPage({
         />
 
         {isLoadingComments ? (
-          <div className="px-4 py-6 text-center text-sm text-[#65676B]">
+          <div className="px-4 py-6 text-center text-sm text-fb-text-secondary">
             Memuat komentar...
           </div>
         ) : commentError ? (
@@ -150,7 +145,7 @@ export function PostDetailPage({
             {commentError}
           </div>
         ) : comments.length === 0 ? (
-          <div className="px-4 py-6 text-center text-sm text-[#65676B]">
+          <div className="px-4 py-6 text-center text-sm text-fb-text-secondary">
             Belum ada komentar.
           </div>
         ) : (
@@ -213,8 +208,7 @@ export function PostDetailPage({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-fb-overlay p-4"
         onClick={onClose}
       >
         {content}

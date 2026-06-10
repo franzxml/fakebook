@@ -5,21 +5,17 @@ type ModalHeaderProps = {
 
 export function ModalHeader({ authorName, onClose }: ModalHeaderProps) {
   return (
-    <div
-      className="relative flex shrink-0 items-center justify-center px-4 py-[14px]"
-      style={{ borderBottom: '1px solid #DADDE1' }}
-    >
-      <h2 style={{ color: '#050505', fontSize: '17px', fontWeight: 700 }}>
+    <div className="relative flex shrink-0 items-center justify-center border-b border-fb-divider px-4 py-[14px]">
+      <h2 className="text-[17px] font-bold text-fb-text">
         Postingan {authorName}
       </h2>
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute right-4 flex size-[32px] items-center justify-center rounded-full transition-colors hover:bg-[#E4E6EB] focus:outline-none"
-          style={{ backgroundColor: '#F0F2F5' }}
+          className="absolute right-4 flex size-[32px] items-center justify-center rounded-full bg-fb-surface transition-colors hover:bg-fb-hover focus:outline-none"
           aria-label="Tutup"
         >
-          <span style={{ color: '#050505', fontSize: '15px', fontWeight: 600 }}>x</span>
+          <span className="text-[15px] font-semibold text-fb-text">x</span>
         </button>
       )}
     </div>

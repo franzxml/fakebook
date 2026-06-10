@@ -5,13 +5,24 @@ export type ApiHealth = {
   timestamp: string
 }
 
-export type PublicUser = {
+/**
+ * Identitas user yang aman ditampilkan ke user lain (author post/komentar,
+ * daftar pengguna, notifikasi). Tidak memuat email atau data privat lain.
+ */
+export type PublicAuthor = {
   id: string
   name: string
   username: string | null
-  email: string
   avatarUrl: string | null
   bio: string | null
+}
+
+/**
+ * Profil user untuk pemiliknya sendiri (response auth & /profile).
+ * Email hanya boleh muncul di sini, bukan di PublicAuthor.
+ */
+export type PublicUser = PublicAuthor & {
+  email: string
 }
 
 export type SessionPayload = {
@@ -27,7 +38,7 @@ export type AuthResponse = {
 export type FeedPost = {
   id: string
   content: string
-  author: PublicUser
+  author: PublicAuthor
   images: {
     id: string
     imageUrl: string
@@ -50,7 +61,7 @@ export type AppNotification = {
   id: string
   type: NotificationType | string
   isRead: boolean
-  actor: PublicUser | null
+  actor: PublicAuthor | null
   post: {
     id: string
     content: string

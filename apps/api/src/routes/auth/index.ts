@@ -1,4 +1,5 @@
 import { Elysia, t } from 'elysia'
+import { config } from '../../config'
 import { prisma } from '../../db'
 import {
   createSession,
@@ -9,10 +10,22 @@ import {
   toSessionPayload,
 } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
+import { isUniqueConstraintError } from '../../lib/prisma-errors'
 import { usernameFromProfile, createUniqueUsername } from '../../lib/user-utils'
 import { verifyGoogleCredential, verifyGoogleAccessToken, type GoogleProfile } from '../../services/google-auth-service'
 
 const RESET_TOKEN_DURATION_MS = 1000 * 60 * 30
+const NAME_MAX_LENGTH = 100
+const EMAIL_MAX_LENGTH = 254
+const PASSWORD_MIN_LENGTH = 6
+const PASSWORD_MAX_LENGTH = 128
+const USERNAME_MIN_LENGTH = 3
+const USERNAME_MAX_LENGTH = 30
+const AVATAR_URL_MAX_LENGTH = 2048
+
+// Hash dummy untuk menyamakan waktu respons login saat email tidak terdaftar,
+// agar keberadaan akun tidak bisa ditebak dari perbedaan timing.
+const DUMMY_PASSWORD_HASH = await Bun.password.hash('fakebook-dummy-password')
 
 export const authRoutes = new Elysia({ prefix: '/auth' })
   .post(
@@ -26,16 +39,28 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         return errorPayload('Email sudah digunakan.')
       }
 
-      const user = await prisma.user.create({
-        data: {
-          name: body.name.trim(),
-          username: await createUniqueUsername(body.username || usernameFromProfile(body.name, email)),
-          email,
-          passwordHash: await Bun.password.hash(body.password),
-          avatarUrl: body.avatarUrl,
-          bio: null,
-        },
-      })
+      let user
+      try {
+        user = await prisma.user.create({
+          data: {
+            name: body.name.trim(),
+            username: await createUniqueUsername(body.username || usernameFromProfile(body.name, email)),
+            email,
+            passwordHash: await Bun.password.hash(body.password),
+            avatarUrl: body.avatarUrl,
+            bio: null,
+          },
+        })
+      } catch (error) {
+        // Race: dua registrasi bersamaan dengan email/username sama — yang
+        // kalah race kena P2002, balas 409 alih-alih 500.
+        if (isUniqueConstraintError(error)) {
+          set.status = 409
+          return errorPayload('Email atau username sudah digunakan.')
+        }
+        throw error
+      }
+
       const session = await createSession(user.id)
 
       set.status = 201
@@ -46,11 +71,11 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     },
     {
       body: t.Object({
-        name: t.String({ minLength: 1 }),
-        email: t.String({ minLength: 3 }),
-        password: t.String({ minLength: 6 }),
-        avatarUrl: t.Optional(t.String()),
-        username: t.Optional(t.String({ minLength: 3 })),
+        name: t.String({ minLength: 1, maxLength: NAME_MAX_LENGTH }),
+        email: t.String({ format: 'email', maxLength: EMAIL_MAX_LENGTH }),
+        password: t.String({ minLength: PASSWORD_MIN_LENGTH, maxLength: PASSWORD_MAX_LENGTH }),
+        avatarUrl: t.Optional(t.String({ maxLength: AVATAR_URL_MAX_LENGTH })),
+        username: t.Optional(t.String({ minLength: USERNAME_MIN_LENGTH, maxLength: USERNAME_MAX_LENGTH })),
       }),
     },
   )
@@ -61,6 +86,9 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       const user = await prisma.user.findUnique({ where: { email } })
 
       if (!user?.passwordHash) {
+        // Tetap lakukan verifikasi terhadap hash dummy supaya durasi respons
+        // mirip dengan kasus email terdaftar (mitigasi timing attack).
+        await Bun.password.verify(body.password, DUMMY_PASSWORD_HASH)
         set.status = 401
         return errorPayload('Email atau kata sandi tidak valid.')
       }
@@ -81,8 +109,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     },
     {
       body: t.Object({
-        email: t.String({ minLength: 3 }),
-        password: t.String({ minLength: 1 }),
+        email: t.String({ format: 'email', maxLength: EMAIL_MAX_LENGTH }),
+        password: t.String({ minLength: 1, maxLength: PASSWORD_MAX_LENGTH }),
       }),
     },
   )
@@ -104,36 +132,47 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         return errorPayload(error instanceof Error ? error.message : 'Login Google gagal.')
       }
 
-      const user = await prisma.user.upsert({
-        where: { email: googleProfile.email },
-        update: {
-          name: googleProfile.name,
-          avatarUrl: googleProfile.avatarUrl,
-        },
-        create: {
-          name: googleProfile.name,
-          username: await createUniqueUsername(usernameFromProfile(googleProfile.name, googleProfile.email)),
-          email: googleProfile.email,
-          avatarUrl: googleProfile.avatarUrl,
-          bio: null,
-        },
-      })
+      // Username dibuat di luar transaksi karena melakukan query lookup berulang.
+      const generatedUsername = await createUniqueUsername(
+        usernameFromProfile(googleProfile.name, googleProfile.email),
+      )
 
-      await prisma.account.upsert({
-        where: {
-          provider_providerAccountId: {
+      // Transaksi: user dan account Google harus tersimpan bersama agar tidak
+      // ada user tanpa link account ketika salah satu query gagal.
+      const user = await prisma.$transaction(async (tx) => {
+        const upsertedUser = await tx.user.upsert({
+          where: { email: googleProfile.email },
+          update: {
+            name: googleProfile.name,
+            avatarUrl: googleProfile.avatarUrl,
+          },
+          create: {
+            name: googleProfile.name,
+            username: generatedUsername,
+            email: googleProfile.email,
+            avatarUrl: googleProfile.avatarUrl,
+            bio: null,
+          },
+        })
+
+        await tx.account.upsert({
+          where: {
+            provider_providerAccountId: {
+              provider: 'google',
+              providerAccountId: googleProfile.providerAccountId,
+            },
+          },
+          update: {
+            userId: upsertedUser.id,
+          },
+          create: {
+            userId: upsertedUser.id,
             provider: 'google',
             providerAccountId: googleProfile.providerAccountId,
           },
-        },
-        update: {
-          userId: user.id,
-        },
-        create: {
-          userId: user.id,
-          provider: 'google',
-          providerAccountId: googleProfile.providerAccountId,
-        },
+        })
+
+        return upsertedUser
       })
 
       const session = await createSession(user.id)
@@ -146,8 +185,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     },
     {
       body: t.Object({
-        credential: t.Optional(t.String({ minLength: 1 })),
-        accessToken: t.Optional(t.String({ minLength: 1 })),
+        credential: t.Optional(t.String({ minLength: 1, maxLength: 4096 })),
+        accessToken: t.Optional(t.String({ minLength: 1, maxLength: 4096 })),
       }),
     },
   )
@@ -163,42 +202,44 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   .post(
     '/password/forgot',
     async ({ body }) => {
+      // Pesan response identik untuk semua kasus agar email terdaftar
+      // tidak bisa dienumerasi dari perbedaan response.
+      const genericResponse = {
+        success: true as const,
+        message: 'Jika email terdaftar, token reset password akan dibuat.',
+      }
+
       const email = normalizeEmail(body.email)
       const user = await prisma.user.findUnique({ where: { email } })
 
-      if (!user) {
-        return {
-          success: true,
-          message: 'Jika email terdaftar, token reset password akan dibuat.',
-        }
+      if (!user?.passwordHash) {
+        return genericResponse
       }
 
-      if (!user.passwordHash) {
-        return {
-          success: true,
-          message: 'Akun Google tidak menggunakan password lokal.',
-        }
-      }
+      const resetToken = await prisma.$transaction(async (tx) => {
+        await tx.passwordResetToken.deleteMany({ where: { userId: user.id } })
 
-      await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } })
-
-      const resetToken = await prisma.passwordResetToken.create({
-        data: {
-          userId: user.id,
-          token: crypto.randomUUID(),
-          expiresAt: new Date(Date.now() + RESET_TOKEN_DURATION_MS),
-        },
+        return tx.passwordResetToken.create({
+          data: {
+            userId: user.id,
+            token: crypto.randomUUID(),
+            expiresAt: new Date(Date.now() + RESET_TOKEN_DURATION_MS),
+          },
+        })
       })
 
-      return {
-        success: true,
-        resetToken: resetToken.token,
-        message: 'Token reset password berhasil dibuat.',
+      // Belum ada layanan email, jadi token hanya diekspos di environment
+      // development. Di production (Lambda) token tidak boleh keluar dari API
+      // karena siapa pun yang tahu email korban bisa mengambil alih akun.
+      if (!config.isAwsLambda) {
+        return { ...genericResponse, resetToken: resetToken.token }
       }
+
+      return genericResponse
     },
     {
       body: t.Object({
-        email: t.String({ minLength: 3 }),
+        email: t.String({ format: 'email', maxLength: 254 }),
       }),
     },
   )
@@ -214,13 +255,20 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         return errorPayload('Token reset password tidak valid atau sudah kedaluwarsa.')
       }
 
-      await prisma.user.update({
-        where: { id: resetToken.userId },
-        data: { passwordHash: await Bun.password.hash(body.password) },
-      })
+      const newPasswordHash = await Bun.password.hash(body.password)
 
-      await prisma.passwordResetToken.delete({ where: { id: resetToken.id } })
-      await prisma.session.deleteMany({ where: { userId: resetToken.userId } })
+      // Transaksi: ganti password, hapus token, dan revoke semua sesi harus
+      // atomic — kegagalan parsial bisa meninggalkan token reusable atau
+      // sesi lama yang masih hidup setelah password berubah.
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: resetToken.userId },
+          data: { passwordHash: newPasswordHash },
+        })
+
+        await tx.passwordResetToken.delete({ where: { id: resetToken.id } })
+        await tx.session.deleteMany({ where: { userId: resetToken.userId } })
+      })
 
       return {
         success: true,
@@ -229,8 +277,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     },
     {
       body: t.Object({
-        token: t.String({ minLength: 1 }),
-        password: t.String({ minLength: 6 }),
+        token: t.String({ minLength: 1, maxLength: 64 }),
+        password: t.String({ minLength: PASSWORD_MIN_LENGTH, maxLength: PASSWORD_MAX_LENGTH }),
       }),
     },
   )

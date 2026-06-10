@@ -38,39 +38,43 @@ export async function createComment({ postId, userId, content, parentCommentId }
     parentCommentOwnerId = parentComment.userId
   }
 
-  const comment = await prisma.comment.create({
-    data: {
-      postId,
-      userId,
-      parentCommentId: resolvedParentId,
-      content: content.trim(),
-    },
-    include: commentInclude,
+  // Transaksi: komentar dan notifikasinya harus tersimpan bersama agar
+  // kegagalan parsial tidak meninggalkan komentar tanpa notifikasi.
+  return prisma.$transaction(async (tx) => {
+    const comment = await tx.comment.create({
+      data: {
+        postId,
+        userId,
+        parentCommentId: resolvedParentId,
+        content: content.trim(),
+      },
+      include: commentInclude,
+    })
+
+    // Notifikasi ke pemilik komentar yang dibalas
+    if (parentCommentOwnerId && parentCommentOwnerId !== userId) {
+      await tx.notification.create({
+        data: {
+          recipientId: parentCommentOwnerId,
+          actorId: userId,
+          postId,
+          type: 'comment_reply',
+        },
+      })
+    }
+
+    // Notifikasi ke pemilik postingan (jika bukan diri sendiri atau sudah dinotif atas)
+    if (post.userId !== userId && post.userId !== parentCommentOwnerId) {
+      await tx.notification.create({
+        data: {
+          recipientId: post.userId,
+          actorId: userId,
+          postId,
+          type: 'post_comment',
+        },
+      })
+    }
+
+    return comment
   })
-
-  // Notifikasi ke pemilik komentar yang dibalas
-  if (parentCommentOwnerId && parentCommentOwnerId !== userId) {
-    await prisma.notification.create({
-      data: {
-        recipientId: parentCommentOwnerId,
-        actorId: userId,
-        postId,
-        type: 'comment_reply',
-      },
-    })
-  }
-
-  // Notifikasi ke pemilik postingan (jika bukan diri sendiri atau sudah dinotif atas)
-  if (post.userId !== userId && post.userId !== parentCommentOwnerId) {
-    await prisma.notification.create({
-      data: {
-        recipientId: post.userId,
-        actorId: userId,
-        postId,
-        type: 'post_comment',
-      },
-    })
-  }
-
-  return comment
 }

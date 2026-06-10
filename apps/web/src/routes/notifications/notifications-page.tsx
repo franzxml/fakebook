@@ -6,7 +6,7 @@ import { getNotificationContent, getNotificationKind } from '@/lib/notification-
 import { getRelativeTime, groupNotificationsByRecency } from '@/lib/notification-utils'
 import { getDisplayName } from '@/lib/user-display'
 import { useAuthStore, useNotificationStore } from '@/stores'
-import type { AppNotification, PublicUser } from '@/types/social'
+import type { AppNotification, PublicAuthor } from '@/types/social'
 
 type NotificationsPageProps = {
   notifications: AppNotification[]
@@ -15,7 +15,7 @@ type NotificationsPageProps = {
 
 type FilterMode = 'all' | 'unread'
 
-function Avatar({ user }: { user: PublicUser | null }) {
+function Avatar({ user }: { user: PublicAuthor | null }) {
   const initial = getDisplayName(user).charAt(0).toUpperCase()
 
   if (user?.avatarUrl) {

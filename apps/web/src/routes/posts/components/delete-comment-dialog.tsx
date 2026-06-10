@@ -24,38 +24,26 @@ export function DeleteCommentDialog({ comment, isDeleting, error, onClose, onCon
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-fb-overlay p-4"
       onClick={() => { if (!isDeleting) onClose() }}
     >
       <div
-        className="w-full max-w-[400px] overflow-hidden bg-white"
-        style={{
-          borderRadius: '12px',
-          boxShadow: '0 12px 28px rgba(0,0,0,0.22)',
-          fontFamily: 'Arial, system-ui, Helvetica, sans-serif',
-        }}
+        className="w-full max-w-[400px] overflow-hidden rounded-xl bg-white shadow-[0_12px_28px_rgb(0_0_0/0.22)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div
-          className="px-4 py-[14px] text-center"
-          style={{ borderBottom: '1px solid #DADDE1' }}
-        >
-          <h2 style={{ color: '#050505', fontSize: '17px', fontWeight: 700 }}>
+        <div className="border-b border-fb-divider px-4 py-[14px] text-center">
+          <h2 className="text-[17px] font-bold text-fb-text">
             Hapus Komentar?
           </h2>
         </div>
 
         {/* Body */}
         <div className="px-4 py-4">
-          <p className="text-sm text-[#65676B] text-center mb-3">
+          <p className="text-sm text-fb-text-secondary text-center mb-3">
             Komentar ini akan dihapus permanen dan tidak bisa dikembalikan.
           </p>
-          <div
-            className="rounded-lg px-3 py-2 text-sm text-[#050505]"
-            style={{ backgroundColor: '#F0F2F5' }}
-          >
+          <div className="rounded-lg bg-fb-surface px-3 py-2 text-sm text-fb-text">
             "{preview}"
           </div>
 
@@ -67,23 +55,18 @@ export function DeleteCommentDialog({ comment, isDeleting, error, onClose, onCon
         </div>
 
         {/* Footer */}
-        <div
-          className="flex border-t"
-          style={{ borderColor: '#DADDE1' }}
-        >
+        <div className="flex border-t border-fb-divider">
           <button
             onClick={onClose}
             disabled={isDeleting}
-            className="flex-1 py-3 text-sm font-semibold transition-colors hover:bg-[#F0F2F5] disabled:opacity-50"
-            style={{ color: '#050505', borderRight: '1px solid #DADDE1' }}
+            className="flex-1 border-r border-fb-divider py-3 text-sm font-semibold text-fb-text transition-colors hover:bg-fb-surface disabled:opacity-50"
           >
             Batal
           </button>
           <button
             onClick={onConfirm}
             disabled={isDeleting}
-            className="flex-1 py-3 text-sm font-semibold transition-colors hover:bg-red-50 disabled:opacity-50"
-            style={{ color: '#E02424' }}
+            className="flex-1 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
           >
             {isDeleting ? 'Menghapus...' : 'Hapus'}
           </button>

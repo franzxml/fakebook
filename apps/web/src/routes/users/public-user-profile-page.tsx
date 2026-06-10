@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { FeedPost, PublicUser } from '@ppwl/shared'
+import type { FeedPost, PublicAuthor } from '@ppwl/shared'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { HomeTopBar } from '@/routes/home/components/home-top-bar'
-import { Avatar } from '@/components/Avatar'
+import { Avatar } from '@/components/avatar'
 import { PostCard } from '@/routes/home/components/post-card'
-import { PostDetailPage } from '@/routes/posts/PostDetailPage'
+import { PostDetailPage } from '@/routes/posts/post-detail-page'
 import { fetchPublicUserProfile, getStoredUser } from '@/services/api'
 import { navigate } from '@/lib/navigation'
 import { getDisplayName } from '@/lib/user-display'
@@ -13,7 +13,7 @@ type PublicUserProfilePageProps = {
   userId: string
 }
 
-type PublicProfile = PublicUser & {
+type PublicProfile = PublicAuthor & {
   createdAt: string
   posts: FeedPost[]
   _count: {

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { AppNotification } from '@ppwl/shared'
+import { connectRealtimeSocket, disconnectRealtimeSocket } from '@/lib/realtime-socket'
 import { useNotificationStore } from './notification-store'
 
 type RealtimeStore = {
@@ -10,50 +10,33 @@ type RealtimeStore = {
   disconnect: () => void
 }
 
-let socket: WebSocket | null = null
-
+// as: import.meta.env mengembalikan any untuk key kustom; nilai dipangkas
+// dan difallback ke null sebelum dipakai.
 const configuredWebsocketUrl = (import.meta.env.VITE_WEBSOCKET_URL as string | undefined)?.trim() || null
 
+// Manajemen koneksi WebSocket (reconnect, parsing pesan) hidup di
+// lib/realtime-socket.ts — store ini hanya memegang state koneksi.
 export const useRealtimeStore = create<RealtimeStore>((set) => ({
   socketConnected: false,
   socketError: null,
   websocketUrl: configuredWebsocketUrl,
   connect: (token) => {
-    if (!token || !configuredWebsocketUrl || socket?.readyState === WebSocket.OPEN) return
+    if (!token || !configuredWebsocketUrl) return
 
-    socket?.close()
-    socket = new WebSocket(`${configuredWebsocketUrl}?token=${encodeURIComponent(token)}`)
-
-    socket.addEventListener('open', () => {
-      set({ socketConnected: true, socketError: null })
-    })
-
-    socket.addEventListener('message', (event) => {
-      try {
-        const payload = JSON.parse(String(event.data)) as { type?: string; notification?: AppNotification }
-
-        if (payload.type === 'notification' && payload.notification) {
-          useNotificationStore.getState().prependNotification(payload.notification)
-        } else if (payload.type === 'feed_changed') {
-          window.dispatchEvent(new CustomEvent('fakebook:feed-changed', { detail: payload }))
-        }
-      } catch {
-        set({ socketError: 'Pesan realtime tidak valid.' })
-      }
-    })
-
-    socket.addEventListener('close', () => {
-      set({ socketConnected: false })
-      socket = null
-    })
-
-    socket.addEventListener('error', () => {
-      set({ socketConnected: false, socketError: 'Koneksi realtime gagal.' })
+    connectRealtimeSocket(configuredWebsocketUrl, token, {
+      onConnected: () => set({ socketConnected: true, socketError: null }),
+      onDisconnected: () => set({ socketConnected: false }),
+      onError: (message) => set({ socketError: message }),
+      onNotification: (notification) => {
+        useNotificationStore.getState().prependNotification(notification)
+      },
+      onFeedChanged: (payload) => {
+        window.dispatchEvent(new CustomEvent('fakebook:feed-changed', { detail: payload }))
+      },
     })
   },
   disconnect: () => {
-    socket?.close()
-    socket = null
+    disconnectRealtimeSocket()
     set({ socketConnected: false })
   },
 }))

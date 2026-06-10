@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
-import type { PublicUser } from '@/types/social'
+import type { PublicAuthor } from '@/types/social'
 import { fetchUsers, getStoredUser } from '@/services/api'
 import { HomeTopBar } from '@/routes/home/components/home-top-bar'
 import { getDisplayName } from '@/lib/user-display'
 import { navigate } from '@/lib/navigation'
 
 type UsersPageProps = {
-  users: PublicUser[]
+  users: PublicAuthor[]
 }
 
 export function UsersPage({ users }: UsersPageProps) {
-  const [allUsers, setAllUsers] = useState<PublicUser[]>(users)
+  const [allUsers, setAllUsers] = useState<PublicAuthor[]>(users)
   const [isLoading, setIsLoading] = useState(users.length === 0)
   const [error, setError] = useState<string | null>(null)
   const currentUser = getStoredUser()

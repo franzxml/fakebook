@@ -5,6 +5,8 @@ import { errorPayload } from '../../http/errors'
 import { commentInclude } from '../../lib/prisma-selects'
 import { broadcastFeedChanged } from '../../realtime/broadcast'
 
+const COMMENT_CONTENT_MAX_LENGTH = 2000
+
 export const commentRoutes = new Elysia({ prefix: '/comments' })
   .patch(
     '/:commentId',
@@ -44,7 +46,7 @@ export const commentRoutes = new Elysia({ prefix: '/comments' })
     {
       params: t.Object({ commentId: t.String() }),
       body: t.Object({
-        content: t.String({ minLength: 1 }),
+        content: t.String({ minLength: 1, maxLength: COMMENT_CONTENT_MAX_LENGTH }),
       }),
     },
   )

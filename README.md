@@ -11,7 +11,7 @@
 - Upload gambar postingan melalui presigned URL S3 (maksimal 1 gambar)
 - Like dan unlike postingan
 - Status like tetap tersimpan setelah refresh
-- Detail postingan
+- Detail postingan (modal dan deep link `/posts/:id`)
 - Tambah, edit, dan hapus komentar
 - Dialog konfirmasi hapus komentar (custom, bukan dialog browser default)
 - Balas komentar
@@ -65,6 +65,7 @@ fakebook/
 |   |   |   |   |-- auth.ts
 |   |   |   |   `-- errors.ts
 |   |   |   |-- lib/
+|   |   |   |   |-- prisma-errors.ts   helper deteksi error Prisma (P2002)
 |   |   |   |   |-- prisma-selects.ts  shared Prisma select/include constants
 |   |   |   |   `-- user-utils.ts      username normalization & generation
 |   |   |   |-- realtime/
@@ -84,6 +85,7 @@ fakebook/
 |   |   |   |-- index.ts               entry point HTTP Lambda
 |   |   |   `-- ws-handler.ts          entry point WebSocket Lambda
 |   |   |-- Dockerfile.lambda
+|   |   |-- eslint.config.js
 |   |   |-- package.json
 |   |   |-- prisma.config.ts
 |   |   `-- tsconfig.json
@@ -94,40 +96,42 @@ fakebook/
 |       |   `-- favicon.svg
 |       |-- src/
 |       |   |-- components/
-|       |   |   `-- Avatar.tsx          shared avatar component lintas route
+|       |   |   `-- avatar.tsx          shared avatar component lintas route
 |       |   |-- hooks/
 |       |   |   `-- use-notification-sync.ts
 |       |   |-- layouts/
-|       |   |   `-- AppLayout.tsx
+|       |   |   `-- app-layout.tsx
 |       |   |-- lib/
 |       |   |   |-- navigation.ts
 |       |   |   |-- notification-display.tsx
 |       |   |   |-- notification-utils.ts
+|       |   |   |-- realtime-socket.ts  manajemen koneksi WebSocket + reconnect
 |       |   |   |-- user-display.ts
 |       |   |   `-- validate-image-file.ts
 |       |   |-- routes/
 |       |   |   |-- auth/
 |       |   |   |   |-- components/
 |       |   |   |   |-- hooks/
-|       |   |   |   |-- ForgotPasswordPage.tsx
-|       |   |   |   |-- LoginPage.tsx
-|       |   |   |   `-- RegisterPage.tsx
+|       |   |   |   |-- forgot-password-page.tsx
+|       |   |   |   |-- login-page.tsx
+|       |   |   |   `-- register-page.tsx
 |       |   |   |-- home/
 |       |   |   |   |-- components/
-|       |   |   |   `-- HomePage.tsx
+|       |   |   |   `-- home-page.tsx
 |       |   |   |-- notifications/
-|       |   |   |   `-- NotificationsPage.tsx
+|       |   |   |   `-- notifications-page.tsx
 |       |   |   |-- posts/
 |       |   |   |   |-- components/
 |       |   |   |   |-- hooks/
 |       |   |   |   |-- utils/
-|       |   |   |   `-- PostDetailPage.tsx
+|       |   |   |   |-- post-detail-page.tsx
+|       |   |   |   `-- post-detail-route.tsx   halaman deep link /posts/:id
 |       |   |   |-- profile/
 |       |   |   |   |-- hooks/
-|       |   |   |   `-- ProfilePage.tsx
+|       |   |   |   `-- profile-page.tsx
 |       |   |   `-- users/
-|       |   |       |-- PublicUserProfilePage.tsx
-|       |   |       `-- UsersPage.tsx
+|       |   |       |-- public-user-profile-page.tsx
+|       |   |       `-- users-page.tsx
 |       |   |-- services/
 |       |   |   `-- api.ts
 |       |   |-- stores/
@@ -139,7 +143,7 @@ fakebook/
 |       |   |   `-- ui-store.ts
 |       |   |-- types/
 |       |   |   `-- social.ts
-|       |   |-- App.tsx
+|       |   |-- app.tsx
 |       |   |-- index.css
 |       |   `-- main.tsx
 |       |-- eslint.config.js
@@ -255,7 +259,9 @@ fakebook/
 | `bun run typecheck:shared` | Typecheck package shared |
 | `bun run typecheck:api` | Typecheck backend |
 | `bun run typecheck:web` | Typecheck frontend |
-| `bun run lint` | Periksa kode frontend dengan ESLint |
+| `bun run lint` | Periksa kode backend dan frontend dengan ESLint |
+| `bun run lint:api` | Periksa kode backend dengan ESLint |
+| `bun run lint:web` | Periksa kode frontend dengan ESLint |
 | `bun run prisma:generate` | Generate Prisma Client dari schema SQLite (lokal) |
 | `bun run prisma:generate:pg` | Generate Prisma Client dari schema PostgreSQL (production) |
 | `bun run prisma:migrate` | Jalankan migrasi database lokal |

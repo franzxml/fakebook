@@ -15,6 +15,9 @@ const notificationInclude = {
   },
 } as const
 
+// Batas atas agar daftar notifikasi tidak unbounded.
+const MAX_NOTIFICATIONS_LIST = 100
+
 export const notificationRoutes = new Elysia({ prefix: '/notifications' })
   .get('/', async ({ request, set }) => {
     const user = await getCurrentUser(request.headers)
@@ -30,6 +33,7 @@ export const notificationRoutes = new Elysia({ prefix: '/notifications' })
       orderBy: {
         createdAt: 'desc',
       },
+      take: MAX_NOTIFICATIONS_LIST,
     })
 
     const unreadCount = await prisma.notification.count({

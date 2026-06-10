@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { flushSync } from 'react-dom'
 import { login } from '@/services/api'
 import { navigate } from '@/lib/navigation'
-import { GoogleAuthButton } from './components/GoogleAuthButton'
+import { GoogleAuthButton } from './components/google-auth-button'
 
 const loginHeroImage = '/images/auth/auth-hero.svg'
 const loginSplashDurationMs = 1000

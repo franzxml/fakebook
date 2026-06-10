@@ -39,7 +39,10 @@ export function usePostEdit({ post, onSuccess }: UsePostEditOptions) {
   }
 
   function removeNewImage(index: number) {
-    URL.revokeObjectURL(newImagePreviews[index])
+    const previewUrl = newImagePreviews[index]
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
     setNewImageFiles((prev) => prev.filter((_, i) => i !== index))
     setNewImagePreviews((prev) => prev.filter((_, i) => i !== index))
   }

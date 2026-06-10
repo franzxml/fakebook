@@ -4,6 +4,10 @@ import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
 import { publicAuthorSelect } from '../../lib/prisma-selects'
 
+// Batas atas agar query tidak unbounded saat jumlah data membesar.
+const MAX_USERS_LIST = 200
+const MAX_USER_POSTS = 100
+
 export const userRoutes = new Elysia({ prefix: '/users' })
   .get('/', async ({ request, set }) => {
     const currentUser = await getCurrentUser(request.headers)
@@ -29,6 +33,7 @@ export const userRoutes = new Elysia({ prefix: '/users' })
       orderBy: {
         createdAt: 'desc',
       },
+      take: MAX_USERS_LIST,
     })
 
     return {
@@ -67,6 +72,7 @@ export const userRoutes = new Elysia({ prefix: '/users' })
             orderBy: {
               createdAt: 'desc',
             },
+            take: MAX_USER_POSTS,
           },
           _count: {
             select: {

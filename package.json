@@ -23,9 +23,11 @@
     "typecheck:api": "bun --cwd apps/api typecheck",
     "typecheck:shared": "bun --cwd packages/shared typecheck",
     "typecheck:web": "bun --cwd apps/web typecheck",
-    "lint": "bun --cwd apps/web lint",
+    "lint": "bun run lint:api && bun run lint:web",
     "prisma:generate": "bun --cwd apps/api prisma generate",
-    "prisma:migrate": "bun --cwd apps/api prisma migrate dev"
+    "prisma:migrate": "bun --cwd apps/api prisma migrate dev",
+    "lint:api": "bun --cwd apps/api lint",
+    "lint:web": "bun --cwd apps/web lint"
   },
   "engines": {
     "bun": ">=1.3.0"

@@ -1,8 +1,18 @@
 import { Elysia, t } from 'elysia'
 import { prisma } from '../../db'
-import { getCurrentUser, toPublicUser } from '../../http/auth'
+import { getCurrentUser, getSessionToken, toPublicUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
+import { isUniqueConstraintError } from '../../lib/prisma-errors'
 import { validateProfileUpdate } from '../../services/profile-service'
+
+const NAME_MAX_LENGTH = 100
+const USERNAME_MIN_LENGTH = 3
+const USERNAME_MAX_LENGTH = 30
+const BIO_MAX_LENGTH = 500
+const EMAIL_MAX_LENGTH = 254
+const PASSWORD_MIN_LENGTH = 6
+const PASSWORD_MAX_LENGTH = 128
+const AVATAR_URL_MAX_LENGTH = 2048
 
 export const profileRoutes = new Elysia({ prefix: '/profile' })
 
@@ -64,20 +74,30 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
         return errorPayload(result.error.message)
       }
 
-      const updatedUser = await prisma.user.update({
-        where: { id: user.id },
-        data: result.data,
-      })
+      try {
+        const updatedUser = await prisma.user.update({
+          where: { id: user.id },
+          data: result.data,
+        })
 
-      return { user: toPublicUser(updatedUser) }
+        return { user: toPublicUser(updatedUser) }
+      } catch (error) {
+        // Race: validasi unik email/username lolos tapi user lain commit
+        // duluan — tangkap P2002 dan balas 409 alih-alih 500.
+        if (isUniqueConstraintError(error)) {
+          set.status = 409
+          return errorPayload('Email atau username sudah digunakan.')
+        }
+        throw error
+      }
     },
     {
       body: t.Object({
-        name: t.Optional(t.String({ minLength: 1 })),
-        username: t.Optional(t.String({ minLength: 3 })),
-        bio: t.Optional(t.String()),
-        email: t.Optional(t.String({ minLength: 3 })),
-        avatarUrl: t.Optional(t.Nullable(t.String())),
+        name: t.Optional(t.String({ minLength: 1, maxLength: NAME_MAX_LENGTH })),
+        username: t.Optional(t.String({ minLength: USERNAME_MIN_LENGTH, maxLength: USERNAME_MAX_LENGTH })),
+        bio: t.Optional(t.String({ maxLength: BIO_MAX_LENGTH })),
+        email: t.Optional(t.String({ format: 'email', maxLength: EMAIL_MAX_LENGTH })),
+        avatarUrl: t.Optional(t.Nullable(t.String({ maxLength: AVATAR_URL_MAX_LENGTH }))),
       }),
     },
   )
@@ -116,17 +136,31 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
         return errorPayload('Password baru tidak boleh sama dengan yang lama.')
       }
 
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { passwordHash: await Bun.password.hash(body.newPassword) },
+      const newPasswordHash = await Bun.password.hash(body.newPassword)
+      const currentToken = getSessionToken(request.headers)
+
+      // Transaksi: ganti password sekaligus revoke semua sesi lain.
+      // Sesi yang sedang dipakai tetap hidup agar user tidak ter-logout.
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { passwordHash: newPasswordHash },
+        })
+
+        await tx.session.deleteMany({
+          where: {
+            userId: user.id,
+            ...(currentToken ? { token: { not: currentToken } } : {}),
+          },
+        })
       })
 
       return { success: true, message: 'Password berhasil diperbarui.' }
     },
     {
       body: t.Object({
-        currentPassword: t.String({ minLength: 1 }),
-        newPassword: t.String({ minLength: 6 }),
+        currentPassword: t.String({ minLength: 1, maxLength: PASSWORD_MAX_LENGTH }),
+        newPassword: t.String({ minLength: PASSWORD_MIN_LENGTH, maxLength: PASSWORD_MAX_LENGTH }),
       }),
     },
   )

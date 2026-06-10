@@ -28,6 +28,8 @@ async function resolvePrisma(): Promise<PrismaInstance> {
       ),
     ])
     console.info('[DB] Menggunakan PostgreSQL RDS.')
+    // as: client PG dan libSQL di-generate dari schema logis yang sama sehingga
+    // bentuk API-nya identik, tapi TypeScript melihatnya sebagai tipe berbeda.
     return pgClient as unknown as PrismaInstance
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err)

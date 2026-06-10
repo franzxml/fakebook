@@ -7,14 +7,15 @@ import { CheckCircle2 } from 'lucide-react'
 import { syncLegacyAuthStorage, useAuthStore } from '@/stores'
 import { useNotificationSync } from '@/hooks/use-notification-sync'
 
-const ForgotPasswordPage = lazy(() => import('@/routes/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })))
-const LoginPage = lazy(() => import('@/routes/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
-const RegisterPage = lazy(() => import('@/routes/auth/RegisterPage').then((m) => ({ default: m.RegisterPage })))
-const HomePage = lazy(() => import('@/routes/home/HomePage').then((m) => ({ default: m.HomePage })))
-const NotificationsPage = lazy(() => import('@/routes/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage })))
-const ProfilePage = lazy(() => import('@/routes/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })))
-const PublicUserProfilePage = lazy(() => import('@/routes/users/PublicUserProfilePage').then((m) => ({ default: m.PublicUserProfilePage })))
-const UsersPage = lazy(() => import('@/routes/users/UsersPage').then((m) => ({ default: m.UsersPage })))
+const ForgotPasswordPage = lazy(() => import('@/routes/auth/forgot-password-page').then((m) => ({ default: m.ForgotPasswordPage })))
+const LoginPage = lazy(() => import('@/routes/auth/login-page').then((m) => ({ default: m.LoginPage })))
+const RegisterPage = lazy(() => import('@/routes/auth/register-page').then((m) => ({ default: m.RegisterPage })))
+const HomePage = lazy(() => import('@/routes/home/home-page').then((m) => ({ default: m.HomePage })))
+const NotificationsPage = lazy(() => import('@/routes/notifications/notifications-page').then((m) => ({ default: m.NotificationsPage })))
+const ProfilePage = lazy(() => import('@/routes/profile/profile-page').then((m) => ({ default: m.ProfilePage })))
+const PublicUserProfilePage = lazy(() => import('@/routes/users/public-user-profile-page').then((m) => ({ default: m.PublicUserProfilePage })))
+const UsersPage = lazy(() => import('@/routes/users/users-page').then((m) => ({ default: m.UsersPage })))
+const PostDetailRoute = lazy(() => import('@/routes/posts/post-detail-route').then((m) => ({ default: m.PostDetailRoute })))
 
 const protectedPathPrefixes = ['/home', '/posts', '/notifications', '/profile', '/users']
 const queryClient = new QueryClient()
@@ -91,7 +92,8 @@ function App() {
   } else if (pathname === '/home') {
     page = <HomePage currentUser={currentUser} />
   } else if (pathname.startsWith('/posts/')) {
-    page = <NotFoundPage />
+    const postId = pathname.split('/')[2]
+    page = postId ? <PostDetailRoute postId={postId} /> : <NotFoundPage />
   } else if (pathname === '/notifications') {
     page = <NotificationsPage notifications={[]} />
   } else if (pathname === '/profile') {

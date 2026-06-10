@@ -6,7 +6,7 @@ import { navigate, notifyAuthStorageChanged } from '@/lib/navigation'
 import { getDisplayName } from '@/lib/user-display'
 import { clearAuthSession, getStoredSession, logout } from '@/services/api'
 import { useNotificationStore, useUIStore } from '@/stores'
-import { Avatar } from '@/components/Avatar'
+import { Avatar } from '@/components/avatar'
 import { NotificationDropdown } from './notification-dropdown'
 
 type HomeTopBarProps = {

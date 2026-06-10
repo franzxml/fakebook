@@ -73,3 +73,23 @@ process.on('unhandledRejection', (reason) => {
 process.on('uncaughtException', (error) => {
   console.error('[uncaughtException]', error)
 })
+
+let isShuttingDown = false
+
+async function shutdownGracefully(signal: string) {
+  if (isShuttingDown) return
+  isShuttingDown = true
+
+  console.info(`[shutdown] Menerima ${signal}, menutup koneksi database...`)
+
+  try {
+    await prisma.$disconnect()
+  } catch (error) {
+    console.error('[shutdown] Gagal menutup koneksi database:', error)
+  }
+
+  process.exit(0)
+}
+
+process.on('SIGTERM', () => void shutdownGracefully('SIGTERM'))
+process.on('SIGINT', () => void shutdownGracefully('SIGINT'))

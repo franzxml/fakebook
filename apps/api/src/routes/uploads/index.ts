@@ -7,6 +7,9 @@ import { errorPayload } from '../../http/errors'
 
 const s3 = new S3Client({ region: config.aws.region })
 
+// Selaras dengan MAX_IMAGE_BYTES di frontend (validate-image-file.ts).
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
 const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 const extensionByType: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -51,14 +54,20 @@ export const uploadRoutes = new Elysia({ prefix: '/uploads' })
       const folder = cleanFolder(body.folder)
       const extension = extensionByType[body.contentType]
       const key = `${folder}/${user.id}/${crypto.randomUUID()}.${extension}`
+      // ContentLength ikut ditandatangani sehingga S3 menolak upload yang
+      // ukurannya tidak sama dengan fileSize yang divalidasi di sini.
       const uploadUrl = await getSignedUrl(
         s3,
         new PutObjectCommand({
           Bucket: config.aws.uploadsBucket,
           Key: key,
           ContentType: body.contentType,
+          ContentLength: body.fileSize,
         }),
-        { expiresIn: 60 * 5 },
+        {
+          expiresIn: 60 * 5,
+          signableHeaders: new Set(['content-type', 'content-length']),
+        },
       )
 
       return {
@@ -71,6 +80,7 @@ export const uploadRoutes = new Elysia({ prefix: '/uploads' })
       body: t.Object({
         contentType: t.String({ minLength: 1 }),
         folder: t.Union([t.Literal('avatars'), t.Literal('posts')]),
+        fileSize: t.Integer({ minimum: 1, maximum: MAX_UPLOAD_BYTES }),
       }),
     },
   )
