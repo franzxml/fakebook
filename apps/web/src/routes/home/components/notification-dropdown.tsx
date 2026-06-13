@@ -1,33 +1,28 @@
 import { useState } from 'react'
 import { CheckCheck, MessageCircle, MoreHorizontal, ThumbsUp } from 'lucide-react'
 import type { PublicUser } from '@ppwl/shared'
-import { getStoredSession } from '@/services/api'
 import { getDisplayName } from '@/lib/user-display'
 import { getNotificationKind, getNotificationText } from '@/lib/notification-display'
 import { getRelativeTime, groupNotificationsByRecency } from '@/lib/notification-utils'
-import { useNotificationStore } from '@/stores'
+import { useAuthStore } from '@/stores'
+import { useMarkAllAsReadMutation, useMarkAsReadMutation, useNotificationsQuery } from '@/hooks/use-notifications'
 import type { AppNotification } from '@/types/social'
 
 export function NotificationDropdown({ currentUser }: { currentUser?: PublicUser | null }) {
-  const token = getStoredSession()?.token
-  const items = useNotificationStore((state) => state.notifications)
-  const unreadCount = useNotificationStore((state) => state.unreadCount)
-  const isLoading = useNotificationStore((state) => state.isLoading)
-  const isUpdating = useNotificationStore((state) => state.isUpdating)
-  const error = useNotificationStore((state) => state.error)
-  const markNotificationAsRead = useNotificationStore((state) => state.markAsRead)
-  const markEveryNotificationAsRead = useNotificationStore((state) => state.markAllAsRead)
+  const token = useAuthStore((state) => state.token)
+  const { data, isLoading, isError } = useNotificationsQuery(token)
+  const markAsReadMutation = useMarkAsReadMutation(token)
+  const markAllAsReadMutation = useMarkAllAsReadMutation(token)
   const [mode, setMode] = useState<'all' | 'unread'>('all')
 
+  const items = data?.notifications ?? []
+  const unreadCount = data?.unreadCount ?? 0
+  const isUpdating = markAsReadMutation.isPending || markAllAsReadMutation.isPending
+  const error = isError
+    ? 'Notifikasi belum bisa dimuat.'
+    : (markAsReadMutation.error?.message ?? markAllAsReadMutation.error?.message ?? null)
+
   const { recent: newItems, previous: previousItems, filtered: filteredItems } = groupNotificationsByRecency(items, mode)
-
-  async function markAsRead(notificationId: string) {
-    await markNotificationAsRead(notificationId, token ?? null)
-  }
-
-  async function markAllAsRead() {
-    await markEveryNotificationAsRead(token ?? null)
-  }
 
   function renderNotification(notification: AppNotification) {
     const actor = notification.actor
@@ -42,7 +37,7 @@ export function NotificationDropdown({ currentUser }: { currentUser?: PublicUser
         disabled={isUpdating}
         className={`flex w-full items-start gap-2 rounded-lg p-2 text-left transition hover:bg-gray-100 min-[375px]:gap-3 ${notification.isRead ? '' : 'bg-blue-50'}`}
         onClick={() => {
-          if (!notification.isRead) void markAsRead(notification.id)
+          if (!notification.isRead) void markAsReadMutation.mutate(notification.id)
         }}
       >
         <span className="relative shrink-0">
@@ -95,7 +90,7 @@ export function NotificationDropdown({ currentUser }: { currentUser?: PublicUser
         <button
           className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400 min-[375px]:text-sm"
           disabled={isUpdating || unreadCount === 0}
-          onClick={markAllAsRead}
+          onClick={() => void markAllAsReadMutation.mutate()}
         >
           <CheckCheck size={16} aria-hidden="true" />
           Tandai semua

@@ -1,6 +1,37 @@
 import { prisma } from '../db'
 import { commentInclude } from '../lib/prisma-selects'
 
+export async function editComment(commentId: string, userId: string, content: string) {
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { postId: true, userId: true },
+  })
+
+  if (!comment) return null
+  if (comment.userId !== userId) return { error: 'forbidden' as const, postId: null }
+
+  const updated = await prisma.comment.update({
+    where: { id: commentId },
+    data: { content: content.trim() },
+    include: commentInclude,
+  })
+
+  return { ok: true as const, comment: updated, postId: comment.postId }
+}
+
+export async function deleteComment(commentId: string, userId: string) {
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { postId: true, userId: true },
+  })
+
+  if (!comment) return null
+  if (comment.userId !== userId) return { error: 'forbidden' as const, postId: null }
+
+  await prisma.comment.delete({ where: { id: commentId } })
+  return { ok: true as const, postId: comment.postId }
+}
+
 type CreateCommentInput = {
   postId: string
   userId: string

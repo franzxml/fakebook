@@ -1,53 +1,11 @@
 import { Elysia, t } from 'elysia'
-import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-import { isUniqueConstraintError } from '../../lib/prisma-errors'
-import { publicAuthorSelect, commentInclude } from '../../lib/prisma-selects'
 import { createComment } from '../../services/comment-service'
+import * as likeService from '../../services/like-service'
+import * as postService from '../../services/post-service'
 import { broadcastFeedChanged } from '../../realtime/broadcast'
 
-const postInclude = {
-  author: { select: publicAuthorSelect },
-  images: true,
-  _count: {
-    select: {
-      comments: true,
-      likes: true,
-    },
-  },
-} as const
-
-const getPostIncludeForUser = (userId: string) => ({
-  ...postInclude,
-  likes: {
-    where: { userId },
-    select: { userId: true },
-  },
-}) as const
-
-const getPostDetailIncludeForUser = (userId: string) => ({
-  ...postInclude,
-  comments: {
-    include: commentInclude,
-    orderBy: {
-      createdAt: 'asc',
-    },
-  },
-  likes: {
-    where: { userId },
-    select: { userId: true },
-  },
-}) as const
-
-const cleanImageUrls = (imageUrls: string[] | undefined) =>
-  imageUrls?.map((imageUrl) => imageUrl.trim()).filter(Boolean) ?? []
-
-/**
- * Parse nilai integer positif dari query string.
- * Input non-angka, negatif, atau nol jatuh ke fallback agar tidak
- * menghasilkan NaN/take negatif yang membuat Prisma melempar error.
- */
 const parsePositiveInt = (raw: string | undefined, fallback: number, max: number): number => {
   const parsed = Math.trunc(Number(raw))
   if (!Number.isFinite(parsed) || parsed < 1) return fallback
@@ -73,19 +31,7 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
 
       const page = parsePositiveInt(query.page, 1, MAX_FEED_PAGE)
       const limit = parsePositiveInt(query.limit, 10, MAX_FEED_LIMIT)
-      const skip = (page - 1) * limit
-
-      const [posts, total] = await Promise.all([
-        prisma.post.findMany({
-          include: getPostIncludeForUser(user.id),
-          orderBy: {
-            createdAt: 'desc',
-          },
-          skip,
-          take: limit,
-        }),
-        prisma.post.count(),
-      ])
+      const { posts, total } = await postService.getFeed(user.id, page, limit)
 
       return {
         posts,
@@ -114,20 +60,7 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      const imageUrls = cleanImageUrls(body.imageUrls)
-      const post = await prisma.post.create({
-        data: {
-          userId: user.id,
-          content: body.content.trim(),
-          images: imageUrls.length
-            ? {
-                create: imageUrls.map((imageUrl) => ({ imageUrl })),
-              }
-            : undefined,
-        },
-        include: getPostIncludeForUser(user.id),
-      })
-
+      const post = await postService.createPost(user.id, body.content, body.imageUrls ?? [])
       broadcastFeedChanged('post_created', post.id)
 
       set.status = 201
@@ -152,10 +85,7 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      const post = await prisma.post.findUnique({
-        where: { id: params.postId },
-        include: getPostDetailIncludeForUser(user.id),
-      })
+      const post = await postService.getPost(params.postId, user.id)
 
       if (!post) {
         set.status = 404
@@ -176,44 +106,24 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      const post = await prisma.post.findUnique({
-        where: { id: params.postId },
-        select: { userId: true },
-      })
+      const ownership = await postService.getPostOwnership(params.postId)
 
-      if (!post) {
+      if (!ownership) {
         set.status = 404
         return errorPayload('Postingan tidak ditemukan.')
       }
 
-      if (post.userId !== user.id) {
+      if (ownership.userId !== user.id) {
         set.status = 403
         return errorPayload('Anda hanya dapat mengubah postingan milik sendiri.')
       }
 
-      const imageUrls = cleanImageUrls(body.imageUrls)
-      // Transaksi: hapus gambar lama dan update post harus atomic agar
-      // kegagalan di tengah tidak meninggalkan post tanpa gambar.
-      const updatedPost = await prisma.$transaction(async (tx) => {
-        if (body.imageUrls) {
-          await tx.postImage.deleteMany({ where: { postId: params.postId } })
-        }
-
-        return tx.post.update({
-          where: { id: params.postId },
-          data: {
-            ...(body.content ? { content: body.content.trim() } : {}),
-            ...(body.imageUrls
-              ? {
-                  images: {
-                    create: imageUrls.map((imageUrl) => ({ imageUrl })),
-                  },
-                }
-              : {}),
-          },
-          include: getPostIncludeForUser(user.id),
-        })
-      })
+      const updatedPost = await postService.updatePost(
+        params.postId,
+        user.id,
+        body.content,
+        body.imageUrls,
+      )
 
       broadcastFeedChanged('post_updated', updatedPost.id)
 
@@ -239,22 +149,19 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      const post = await prisma.post.findUnique({
-        where: { id: params.postId },
-        select: { userId: true },
-      })
+      const ownership = await postService.getPostOwnership(params.postId)
 
-      if (!post) {
+      if (!ownership) {
         set.status = 404
         return errorPayload('Postingan tidak ditemukan.')
       }
 
-      if (post.userId !== user.id) {
+      if (ownership.userId !== user.id) {
         set.status = 403
         return errorPayload('Anda hanya dapat menghapus postingan milik sendiri.')
       }
 
-      await prisma.post.delete({ where: { id: params.postId } })
+      await postService.deletePost(params.postId)
       broadcastFeedChanged('post_deleted', params.postId)
 
       return { success: true }
@@ -271,24 +178,14 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      const post = await prisma.post.findUnique({
-        where: { id: params.postId },
-        select: { id: true },
-      })
+      const ownership = await postService.getPostOwnership(params.postId)
 
-      if (!post) {
+      if (!ownership) {
         set.status = 404
         return errorPayload('Postingan tidak ditemukan.')
       }
 
-      const comments = await prisma.comment.findMany({
-        where: { postId: params.postId },
-        include: commentInclude,
-        orderBy: {
-          createdAt: 'asc',
-        },
-      })
-
+      const comments = await postService.listPostComments(params.postId)
       return { comments }
     },
     { params: t.Object({ postId: t.String() }) },
@@ -345,75 +242,21 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      const post = await prisma.post.findUnique({
-        where: { id: params.postId },
-        select: { userId: true },
-      })
+      const ownership = await postService.getPostOwnership(params.postId)
 
-      if (!post) {
+      if (!ownership) {
         set.status = 404
         return errorPayload('Postingan tidak ditemukan.')
       }
 
-      const likeWhere = {
-        postId_userId: {
-          postId: params.postId,
-          userId: user.id,
-        },
+      const result = await likeService.likePost(params.postId, user.id, ownership.userId)
+
+      if (result.isNewLike) {
+        broadcastFeedChanged('post_liked', params.postId)
       }
 
-      try {
-        // Transaksi: like + notifikasi atomic. Notifikasi hanya dibuat saat
-        // like benar-benar baru agar re-like berulang tidak membanjiri
-        // notifikasi pemilik post.
-        const result = await prisma.$transaction(async (tx) => {
-          const existingLike = await tx.like.findUnique({ where: likeWhere })
-
-          if (existingLike) {
-            return { like: existingLike, isNewLike: false }
-          }
-
-          const like = await tx.like.create({
-            data: {
-              postId: params.postId,
-              userId: user.id,
-            },
-          })
-
-          if (post.userId !== user.id) {
-            await tx.notification.create({
-              data: {
-                recipientId: post.userId,
-                actorId: user.id,
-                postId: params.postId,
-                type: 'post_like',
-              },
-            })
-          }
-
-          return { like, isNewLike: true }
-        })
-
-        if (result.isNewLike) {
-          broadcastFeedChanged('post_liked', params.postId)
-        }
-
-        set.status = 201
-        return { like: result.like }
-      } catch (error) {
-        // Dua request like bersamaan: yang kalah race kena P2002 — perlakukan
-        // sebagai idempoten, kembalikan like yang sudah ada.
-        if (isUniqueConstraintError(error)) {
-          const existingLike = await prisma.like.findUnique({ where: likeWhere })
-
-          if (existingLike) {
-            set.status = 201
-            return { like: existingLike }
-          }
-        }
-
-        throw error
-      }
+      set.status = 201
+      return { like: result.like }
     },
     { params: t.Object({ postId: t.String() }) },
   )
@@ -427,13 +270,7 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      await prisma.like.deleteMany({
-        where: {
-          postId: params.postId,
-          userId: user.id,
-        },
-      })
-
+      await likeService.unlikePost(params.postId, user.id)
       broadcastFeedChanged('post_unliked', params.postId)
 
       return { success: true }

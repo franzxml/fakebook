@@ -1,31 +1,26 @@
 import { useEffect } from 'react'
-import { useNotificationStore, useRealtimeStore } from '@/stores'
-
-const POLLING_INTERVAL_MS = 15000
+import { queryClient } from '@/lib/query-client'
+import { useRealtimeStore } from '@/stores'
+import { useNotificationsQuery } from './use-notifications'
 
 export function useNotificationSync(token: string | null) {
-  const fetchForToken = useNotificationStore((state) => state.fetchForToken)
-  const resetNotifications = useNotificationStore((state) => state.reset)
   const connectRealtime = useRealtimeStore((state) => state.connect)
   const disconnectRealtime = useRealtimeStore((state) => state.disconnect)
 
+  // Keep polling alive globally so badge count updates on every protected page.
+  useNotificationsQuery(token)
+
   useEffect(() => {
     if (!token) {
-      resetNotifications()
       disconnectRealtime()
+      queryClient.removeQueries({ queryKey: ['notifications'] })
       return undefined
     }
 
-    void fetchForToken(token)
     connectRealtime(token)
 
-    const intervalId = window.setInterval(() => {
-      void fetchForToken(token)
-    }, POLLING_INTERVAL_MS)
-
     return () => {
-      window.clearInterval(intervalId)
       disconnectRealtime()
     }
-  }, [connectRealtime, disconnectRealtime, fetchForToken, resetNotifications, token])
+  }, [connectRealtime, disconnectRealtime, token])
 }

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import type { FeedPost, PublicAuthor } from '@ppwl/shared'
+import { useState } from 'react'
+import type { FeedPost } from '@ppwl/shared'
 import { ArrowLeft, Loader2 } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { HomeTopBar } from '@/routes/home/components/home-top-bar'
 import { Avatar } from '@/components/avatar'
 import { PostCard } from '@/routes/home/components/post-card'
@@ -8,6 +9,7 @@ import { PostDetailPage } from '@/routes/posts/post-detail-page'
 import { fetchPublicUserProfile, getStoredUser } from '@/services/api'
 import { navigate } from '@/lib/navigation'
 import { getDisplayName } from '@/lib/user-display'
+import type { PublicAuthor } from '@/types/social'
 
 type PublicUserProfilePageProps = {
   userId: string
@@ -23,91 +25,68 @@ type PublicProfile = PublicAuthor & {
   }
 }
 
-type PublicProfileState = {
-  userId: string | null
-  profile: PublicProfile | null
-  error: string | null
+type ProfileResponse = {
+  user: PublicProfile
 }
 
 export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
+  const queryClient = useQueryClient()
   const currentUser = getStoredUser()
-  const [profileState, setProfileState] = useState<PublicProfileState>({
-    userId: null,
-    profile: null,
-    error: null,
-  })
-  const [posts, setPosts] = useState<FeedPost[]>([])
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null)
   const [shouldFocusComment, setShouldFocusComment] = useState(false)
+
+  const { data: profileData, isLoading, isError, error } = useQuery<ProfileResponse>({
+    queryKey: ['user', userId, 'profile'],
+    queryFn: () => fetchPublicUserProfile(userId),
+  })
+
+  const profile = profileData?.user ?? null
+  const posts = profile?.posts ?? []
+  const displayName = getDisplayName(profile)
+
+  function updateProfileCache(updater: (posts: FeedPost[]) => FeedPost[]) {
+    queryClient.setQueryData<ProfileResponse>(['user', userId, 'profile'], (old) => {
+      if (!old) return old
+      return { ...old, user: { ...old.user, posts: updater(old.user.posts) } }
+    })
+  }
+
+  function handleLikeStatusChange(postId: string, nextLikeCount: number, nextLiked: boolean) {
+    const update = (post: FeedPost): FeedPost => ({
+      ...post,
+      likes: currentUser?.id && nextLiked ? [{ userId: currentUser.id }] : [],
+      _count: { ...post._count, likes: nextLikeCount },
+    })
+    updateProfileCache((items) => items.map((p) => (p.id === postId ? update(p) : p)))
+    setSelectedPost((current) => (current?.id === postId ? update(current) : current))
+  }
+
+  function handleCommentCountChange(postId: string, nextCommentCount: number) {
+    const update = (post: FeedPost): FeedPost => ({
+      ...post,
+      _count: { ...post._count, comments: nextCommentCount },
+    })
+    updateProfileCache((items) => items.map((p) => (p.id === postId ? update(p) : p)))
+    setSelectedPost((current) => (current?.id === postId ? update(current) : current))
+  }
+
+  function handlePostUpdated(updatedPost: FeedPost) {
+    updateProfileCache((items) => items.map((p) => (p.id === updatedPost.id ? updatedPost : p)))
+    setSelectedPost((current) => (current?.id === updatedPost.id ? updatedPost : current))
+  }
+
+  function handlePostDeleted(postId: string) {
+    updateProfileCache((items) => items.filter((p) => p.id !== postId))
+    setSelectedPost((current) => (current?.id === postId ? null : current))
+  }
 
   function handleBack() {
     if (window.history.length > 1) {
       window.history.back()
       return
     }
-
     navigate('/users')
   }
-
-  useEffect(() => {
-    let isMounted = true
-
-    async function load() {
-      try {
-        const response = await fetchPublicUserProfile(userId)
-        if (!isMounted) return
-        setProfileState({ userId, profile: response.user, error: null })
-        setPosts(response.user.posts)
-      } catch (fetchError) {
-        if (!isMounted) return
-        setProfileState({
-          userId,
-          profile: null,
-          error: fetchError instanceof Error ? fetchError.message : 'Gagal memuat profil pengguna.',
-        })
-      }
-    }
-
-    void load()
-
-    return () => {
-      isMounted = false
-    }
-  }, [userId])
-
-  function syncPost(postId: string, updater: (post: FeedPost) => FeedPost) {
-    setPosts((current) => current.map((p) => (p.id === postId ? updater(p) : p)))
-    setSelectedPost((current) => (current?.id === postId ? updater(current) : current))
-  }
-
-  function handleLikeStatusChange(postId: string, nextLikeCount: number, nextLiked: boolean) {
-    syncPost(postId, (post) => ({
-      ...post,
-      likes: currentUser?.id && nextLiked ? [{ userId: currentUser.id }] : [],
-      _count: { ...post._count, likes: nextLikeCount },
-    }))
-  }
-
-  function handleCommentCountChange(postId: string, nextCommentCount: number) {
-    syncPost(postId, (post) => ({
-      ...post,
-      _count: { ...post._count, comments: nextCommentCount },
-    }))
-  }
-
-  function handlePostUpdated(updatedPost: FeedPost) {
-    syncPost(updatedPost.id, () => updatedPost)
-  }
-
-  function handlePostDeleted(postId: string) {
-    setPosts((currentPosts) => currentPosts.filter((post) => post.id !== postId))
-    setSelectedPost((currentPost) => (currentPost?.id === postId ? null : currentPost))
-  }
-
-  const profile = profileState.userId === userId ? profileState.profile : null
-  const error = profileState.userId === userId ? profileState.error : null
-  const isLoading = profileState.userId !== userId
-  const displayName = getDisplayName(profile)
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-gray-900">
@@ -126,9 +105,9 @@ export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
           <section className="grid min-h-[240px] place-items-center rounded-xl bg-white shadow-sm ring-1 ring-gray-200" role="status" aria-label="Memuat profil">
             <Loader2 className="h-7 w-7 animate-spin text-blue-600" aria-hidden="true" />
           </section>
-        ) : error || !profile ? (
+        ) : isError || !profile ? (
           <section className="rounded-xl bg-white p-5 text-sm font-semibold text-red-700 shadow-sm ring-1 ring-gray-200">
-            {error ?? 'Profil pengguna tidak ditemukan.'}
+            {error instanceof Error ? error.message : 'Profil pengguna tidak ditemukan.'}
           </section>
         ) : (
           <>
@@ -194,8 +173,12 @@ export function PublicUserProfilePage({ userId }: PublicUserProfilePageProps) {
             key={selectedPost.id}
             post={selectedPost}
             autoFocusComment={shouldFocusComment}
-            onCommentCountChange={(nextCommentCount) => handleCommentCountChange(selectedPost.id, nextCommentCount)}
-            onLikeStatusChange={(nextLikeCount, nextLiked) => handleLikeStatusChange(selectedPost.id, nextLikeCount, nextLiked)}
+            onCommentCountChange={(nextCommentCount) =>
+              handleCommentCountChange(selectedPost.id, nextCommentCount)
+            }
+            onLikeStatusChange={(nextLikeCount, nextLiked) =>
+              handleLikeStatusChange(selectedPost.id, nextLikeCount, nextLiked)
+            }
             onClose={() => setSelectedPost(null)}
           />
         )}

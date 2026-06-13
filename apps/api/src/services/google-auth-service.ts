@@ -1,3 +1,4 @@
+import { prisma } from '../db'
 import { config } from '../config'
 import { normalizeEmail } from '../http/auth'
 
@@ -69,4 +70,40 @@ export async function verifyGoogleAccessToken(accessToken: string): Promise<Goog
   if (!payload.sub || !payload.email || !payload.name) throw new Error('Profil Google tidak lengkap.')
 
   return buildProfile(payload.sub, payload.email, payload.name, payload.picture)
+}
+
+export async function loginWithGoogle(
+  googleProfile: GoogleProfile,
+  generatedUsername: string,
+): Promise<Awaited<ReturnType<typeof prisma.user.upsert>>> {
+  return prisma.$transaction(async (tx) => {
+    const upsertedUser = await tx.user.upsert({
+      where: { email: googleProfile.email },
+      update: { name: googleProfile.name, avatarUrl: googleProfile.avatarUrl },
+      create: {
+        name: googleProfile.name,
+        username: generatedUsername,
+        email: googleProfile.email,
+        avatarUrl: googleProfile.avatarUrl,
+        bio: null,
+      },
+    })
+
+    await tx.account.upsert({
+      where: {
+        provider_providerAccountId: {
+          provider: 'google',
+          providerAccountId: googleProfile.providerAccountId,
+        },
+      },
+      update: { userId: upsertedUser.id },
+      create: {
+        userId: upsertedUser.id,
+        provider: 'google',
+        providerAccountId: googleProfile.providerAccountId,
+      },
+    })
+
+    return upsertedUser
+  })
 }

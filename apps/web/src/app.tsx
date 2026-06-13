@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { appMetadata } from '@ppwl/shared'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from '@/lib/query-client'
 import { Toaster } from 'sonner'
 import { CheckCircle2 } from 'lucide-react'
 import { syncLegacyAuthStorage, useAuthStore } from '@/stores'
@@ -18,7 +19,6 @@ const UsersPage = lazy(() => import('@/routes/users/users-page').then((m) => ({ 
 const PostDetailRoute = lazy(() => import('@/routes/posts/post-detail-route').then((m) => ({ default: m.PostDetailRoute })))
 
 const protectedPathPrefixes = ['/home', '/posts', '/notifications', '/profile', '/users']
-const queryClient = new QueryClient()
 
 function isProtectedPath(pathname: string) {
   return protectedPathPrefixes.some((pathPrefix) => (
@@ -95,11 +95,11 @@ function App() {
     const postId = pathname.split('/')[2]
     page = postId ? <PostDetailRoute postId={postId} /> : <NotFoundPage />
   } else if (pathname === '/notifications') {
-    page = <NotificationsPage notifications={[]} />
+    page = <NotificationsPage />
   } else if (pathname === '/profile') {
     page = <ProfilePage />
   } else if (pathname === '/users') {
-    page = <UsersPage users={[]} />
+    page = <UsersPage />
   } else if (pathname.startsWith('/users/')) {
     const userId = pathname.split('/')[2]
     page = userId ? <PublicUserProfilePage userId={userId} /> : <NotFoundPage />

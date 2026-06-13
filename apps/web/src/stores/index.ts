@@ -1,5 +1,3 @@
 export { syncLegacyAuthStorage, useAuthStore } from './auth-store'
-export { useFeedStore } from './feed-store'
-export { useNotificationStore } from './notification-store'
 export { useRealtimeStore } from './realtime-store'
 export { useUIStore } from './ui-store'

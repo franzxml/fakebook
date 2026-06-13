@@ -1,43 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { PublicAuthor } from '@/types/social'
 import { fetchUsers, getStoredUser } from '@/services/api'
 import { HomeTopBar } from '@/routes/home/components/home-top-bar'
 import { getDisplayName } from '@/lib/user-display'
 import { navigate } from '@/lib/navigation'
 
-type UsersPageProps = {
-  users: PublicAuthor[]
-}
+export function UsersPage() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+  })
 
-export function UsersPage({ users }: UsersPageProps) {
-  const [allUsers, setAllUsers] = useState<PublicAuthor[]>(users)
-  const [isLoading, setIsLoading] = useState(users.length === 0)
-  const [error, setError] = useState<string | null>(null)
+  const users: PublicAuthor[] = data?.users ?? []
   const currentUser = getStoredUser()
-
-  useEffect(() => {
-    let isMounted = true
-
-    async function load() {
-      try {
-        const response = await fetchUsers()
-        if (!isMounted) return
-        setAllUsers(response.users)
-        setError(null)
-      } catch {
-        if (!isMounted) return
-        setError('Gagal memuat daftar pengguna.')
-      } finally {
-        if (isMounted) setIsLoading(false)
-      }
-    }
-
-    void load()
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-gray-900">
@@ -48,13 +23,15 @@ export function UsersPage({ users }: UsersPageProps) {
 
           {isLoading ? (
             <p className="mt-5 text-sm font-medium text-gray-500">Memuat pengguna...</p>
-          ) : error ? (
-            <p className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{error}</p>
-          ) : allUsers.length === 0 ? (
+          ) : isError ? (
+            <p className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+              Gagal memuat daftar pengguna.
+            </p>
+          ) : users.length === 0 ? (
             <p className="mt-5 text-sm font-medium text-gray-500">Belum ada pengguna.</p>
           ) : (
             <div className="mt-4 divide-y divide-gray-100">
-              {allUsers.map((user) => {
+              {users.map((user) => {
                 const displayName = getDisplayName(user)
 
                 return (

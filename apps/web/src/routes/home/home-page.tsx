@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { FeedPost, PublicUser } from '@ppwl/shared'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { PostDetailPage } from '@/routes/posts/post-detail-page'
 import { fetchFeed } from '@/services/api'
+import type { FeedResponse } from '@/services/api'
 import { navigate } from '@/lib/navigation'
-import { useFeedStore } from '@/stores'
 import { CreatePostBox } from './components/create-post-box'
 import { HomeTopBar } from './components/home-top-bar'
 import { PostCard } from './components/post-card'
@@ -29,14 +29,11 @@ function Composer({ currentUser, onPostCreated }: { currentUser?: PublicUser | n
 }
 
 function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
-  const feedPosts = useFeedStore((state) => state.posts)
-  const setFeedPosts = useFeedStore((state) => state.setPosts)
-  const addFeedPost = useFeedStore((state) => state.addPost)
-  const updateFeedPost = useFeedStore((state) => state.updatePost)
-  const deleteFeedPost = useFeedStore((state) => state.deletePost)
+  const queryClient = useQueryClient()
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [shouldFocusComment, setShouldFocusComment] = useState(false)
-  const feedQuery = useQuery({
+
+  const feedQuery = useQuery<FeedResponse>({
     queryKey: ['feed', currentUser?.id],
     queryFn: () => fetchFeed(1, FEED_PAGE_SIZE),
     enabled: Boolean(currentUser?.id),
@@ -44,69 +41,69 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   })
+
+  const feedPosts = feedQuery.data?.posts ?? []
   const refetchFeed = feedQuery.refetch
 
   useEffect(() => {
-    if (feedQuery.data?.posts) {
-      setFeedPosts(feedQuery.data.posts)
-    }
-  }, [feedQuery.data?.posts, setFeedPosts])
-
-  useEffect(() => {
-    const handleRealtimeFeedChange = () => {
-      void refetchFeed()
-    }
-
+    const handleRealtimeFeedChange = () => { void refetchFeed() }
     window.addEventListener('fakebook:feed-changed', handleRealtimeFeedChange)
-
-    return () => {
-      window.removeEventListener('fakebook:feed-changed', handleRealtimeFeedChange)
-    }
+    return () => { window.removeEventListener('fakebook:feed-changed', handleRealtimeFeedChange) }
   }, [refetchFeed])
 
-  const selectedPost = selectedPostId ? feedPosts.find((post) => post.id === selectedPostId) ?? null : null
-  const isLoadingFeed = feedQuery.isLoading && feedPosts.length === 0
-  const feedError = feedQuery.isError ? 'Gagal memuat postingan dari backend.' : null
+  function updateFeedCache(updater: (posts: FeedPost[]) => FeedPost[]) {
+    queryClient.setQueryData<FeedResponse>(['feed', currentUser?.id], (old) => {
+      if (!old) return old
+      return { ...old, posts: updater(old.posts) }
+    })
+  }
+
+  function handlePostCreated(post: FeedPost) {
+    updateFeedCache((posts) => [post, ...posts])
+  }
 
   function handleLikeStatusChange(postId: string, nextLikeCount: number, nextLiked: boolean) {
-    const currentPost = feedPosts.find((post) => post.id === postId)
-    if (currentPost) {
-      updateFeedPost({
-        ...currentPost,
-        likes: currentUser?.id && nextLiked ? [{ userId: currentUser.id }] : [],
-        _count: {
-          ...currentPost._count,
-          likes: nextLikeCount,
-        },
-      })
-    }
+    updateFeedCache((posts) =>
+      posts.map((post) => {
+        if (post.id !== postId) return post
+        return {
+          ...post,
+          likes: currentUser?.id && nextLiked ? [{ userId: currentUser.id }] : [],
+          _count: { ...post._count, likes: nextLikeCount },
+        }
+      }),
+    )
   }
 
   function handleCommentCountChange(postId: string, nextCommentCount: number) {
-    const currentPost = feedPosts.find((post) => post.id === postId)
-    if (currentPost) {
-      updateFeedPost({
-        ...currentPost,
-        _count: {
-          ...currentPost._count,
-          comments: nextCommentCount,
-        },
-      })
-    }
+    updateFeedCache((posts) =>
+      posts.map((post) => {
+        if (post.id !== postId) return post
+        return { ...post, _count: { ...post._count, comments: nextCommentCount } }
+      }),
+    )
   }
 
   function handlePostUpdated(updatedPost: FeedPost) {
-    updateFeedPost(updatedPost)
+    updateFeedCache((posts) =>
+      posts.map((post) => (post.id === updatedPost.id ? updatedPost : post)),
+    )
   }
 
   function handlePostDeleted(postId: string) {
-    deleteFeedPost(postId)
-    setSelectedPostId((currentPostId) => currentPostId === postId ? null : currentPostId)
+    updateFeedCache((posts) => posts.filter((post) => post.id !== postId))
+    setSelectedPostId((current) => (current === postId ? null : current))
   }
+
+  const selectedPost = selectedPostId
+    ? feedPosts.find((post) => post.id === selectedPostId) ?? null
+    : null
+  const isLoadingFeed = feedQuery.isLoading && feedPosts.length === 0
+  const feedError = feedQuery.isError ? 'Gagal memuat postingan dari backend.' : null
 
   return (
     <main className="mx-auto w-full max-w-[680px] space-y-4 px-3 pb-10">
-      <Composer currentUser={currentUser} onPostCreated={addFeedPost} />
+      <Composer currentUser={currentUser} onPostCreated={handlePostCreated} />
 
       {isLoadingFeed ? (
         <div className="rounded-xl bg-white p-8 text-center text-sm font-medium text-gray-500 shadow-sm ring-1 ring-gray-200">
@@ -147,8 +144,12 @@ function Feed({ currentUser }: { currentUser?: PublicUser | null }) {
           key={selectedPost.id}
           post={selectedPost}
           autoFocusComment={shouldFocusComment}
-          onCommentCountChange={(nextCommentCount) => handleCommentCountChange(selectedPost.id, nextCommentCount)}
-          onLikeStatusChange={(nextLikeCount, nextLiked) => handleLikeStatusChange(selectedPost.id, nextLikeCount, nextLiked)}
+          onCommentCountChange={(nextCommentCount) =>
+            handleCommentCountChange(selectedPost.id, nextCommentCount)
+          }
+          onLikeStatusChange={(nextLikeCount, nextLiked) =>
+            handleLikeStatusChange(selectedPost.id, nextLikeCount, nextLiked)
+          }
           onClose={() => setSelectedPostId(null)}
         />
       )}

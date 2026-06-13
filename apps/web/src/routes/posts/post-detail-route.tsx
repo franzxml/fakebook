@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { AppLayout } from '@/layouts/app-layout'
 import { fetchPostDetail } from '@/services/api'
-import type { FeedPost, PostComment } from '@/types/social'
+import type { FeedPost } from '@/types/social'
+import type { PostComment } from '@/types/social'
 import { PostDetailPage } from './post-detail-page'
 
 type PostDetailRouteProps = {
@@ -10,40 +11,11 @@ type PostDetailRouteProps = {
 
 type PostWithComments = FeedPost & { comments: PostComment[] }
 
-/**
- * Halaman deep link /posts/:id — fetch postingan berdasarkan id lalu render
- * PostDetailPage dalam mode non-modal (di dalam AppLayout).
- */
 export function PostDetailRoute({ postId }: PostDetailRouteProps) {
-  const [post, setPost] = useState<PostWithComments | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    let isMounted = true
-
-    async function load() {
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        const response = await fetchPostDetail(postId)
-        if (!isMounted) return
-        setPost(response.post)
-      } catch (err) {
-        if (!isMounted) return
-        setError(err instanceof Error ? err.message : 'Gagal memuat postingan.')
-      } finally {
-        if (isMounted) setIsLoading(false)
-      }
-    }
-
-    void load()
-
-    return () => {
-      isMounted = false
-    }
-  }, [postId])
+  const { data, isLoading, isError, error } = useQuery<{ post: PostWithComments }>({
+    queryKey: ['post', postId],
+    queryFn: () => fetchPostDetail(postId),
+  })
 
   if (isLoading) {
     return (
@@ -55,11 +27,13 @@ export function PostDetailRoute({ postId }: PostDetailRouteProps) {
     )
   }
 
-  if (error || !post) {
+  if (isError || !data) {
     return (
       <AppLayout>
         <div className="mx-auto w-full max-w-[650px] rounded-xl bg-white p-5 text-center shadow-sm ring-1 ring-gray-200">
-          <p className="text-sm font-medium text-red-600">{error ?? 'Postingan tidak ditemukan.'}</p>
+          <p className="text-sm font-medium text-red-600">
+            {error instanceof Error ? error.message : 'Postingan tidak ditemukan.'}
+          </p>
           <a href="/home" className="mt-4 inline-flex text-sm font-medium text-blue-600 hover:text-blue-700">
             Kembali ke beranda
           </a>
@@ -68,5 +42,5 @@ export function PostDetailRoute({ postId }: PostDetailRouteProps) {
     )
   }
 
-  return <PostDetailPage post={post} comments={post.comments} />
+  return <PostDetailPage post={data.post} comments={data.post.comments} />
 }

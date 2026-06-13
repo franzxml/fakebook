@@ -5,7 +5,8 @@ import type { PublicUser } from '@ppwl/shared'
 import { navigate, notifyAuthStorageChanged } from '@/lib/navigation'
 import { getDisplayName } from '@/lib/user-display'
 import { clearAuthSession, getStoredSession, logout } from '@/services/api'
-import { useNotificationStore, useUIStore } from '@/stores'
+import { useAuthStore, useUIStore } from '@/stores'
+import { useNotificationsQuery } from '@/hooks/use-notifications'
 import { Avatar } from '@/components/avatar'
 import { NotificationDropdown } from './notification-dropdown'
 
@@ -37,7 +38,9 @@ function IconButton({
 
 export function HomeTopBar({ currentPath = '/home', currentUser }: HomeTopBarProps) {
   const notificationAreaRef = useRef<HTMLDivElement | null>(null)
-  const unreadCount = useNotificationStore((state) => state.unreadCount)
+  const token = useAuthStore((state) => state.token)
+  const { data: notificationsData } = useNotificationsQuery(token)
+  const unreadCount = notificationsData?.unreadCount ?? 0
   const isNotificationsOpen = useUIStore((state) => state.notificationDropdownOpen)
   const toggleNotificationDropdown = useUIStore((state) => state.toggleNotificationDropdown)
   const setNotificationDropdownOpen = useUIStore((state) => state.setNotificationDropdownOpen)
@@ -75,12 +78,12 @@ export function HomeTopBar({ currentPath = '/home', currentUser }: HomeTopBarPro
   async function handleLogout() {
     if (isLoggingOut) return
 
-    const token = getStoredSession()?.token
+    const sessionToken = getStoredSession()?.token
 
     setIsLoggingOut(true)
 
     try {
-      await logout(token)
+      await logout(sessionToken)
     } catch (error) {
       console.warn('[HomeTopBar] Server logout gagal, tetap logout lokal:', error)
     } finally {

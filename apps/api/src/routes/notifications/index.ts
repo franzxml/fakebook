@@ -1,22 +1,7 @@
 import { Elysia, t } from 'elysia'
-import { prisma } from '../../db'
 import { getCurrentUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-import { publicAuthorSelect } from '../../lib/prisma-selects'
-
-const notificationInclude = {
-  actor: { select: publicAuthorSelect },
-  post: {
-    select: {
-      id: true,
-      content: true,
-      createdAt: true,
-    },
-  },
-} as const
-
-// Batas atas agar daftar notifikasi tidak unbounded.
-const MAX_NOTIFICATIONS_LIST = 100
+import * as notificationService from '../../services/notification-service'
 
 export const notificationRoutes = new Elysia({ prefix: '/notifications' })
   .get('/', async ({ request, set }) => {
@@ -27,23 +12,7 @@ export const notificationRoutes = new Elysia({ prefix: '/notifications' })
       return errorPayload('Sesi tidak valid.')
     }
 
-    const notifications = await prisma.notification.findMany({
-      where: { recipientId: user.id },
-      include: notificationInclude,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: MAX_NOTIFICATIONS_LIST,
-    })
-
-    const unreadCount = await prisma.notification.count({
-      where: {
-        recipientId: user.id,
-        isRead: false,
-      },
-    })
-
-    return { notifications, unreadCount }
+    return notificationService.getNotificationsForUser(user.id)
   })
   .get('/unread-count', async ({ request, set }) => {
     const user = await getCurrentUser(request.headers)
@@ -53,13 +22,7 @@ export const notificationRoutes = new Elysia({ prefix: '/notifications' })
       return errorPayload('Sesi tidak valid.')
     }
 
-    const unreadCount = await prisma.notification.count({
-      where: {
-        recipientId: user.id,
-        isRead: false,
-      },
-    })
-
+    const unreadCount = await notificationService.getUnreadCount(user.id)
     return { unreadCount }
   })
   .patch('/read-all', async ({ request, set }) => {
@@ -70,20 +33,7 @@ export const notificationRoutes = new Elysia({ prefix: '/notifications' })
       return errorPayload('Sesi tidak valid.')
     }
 
-    const result = await prisma.notification.updateMany({
-      where: {
-        recipientId: user.id,
-        isRead: false,
-      },
-      data: {
-        isRead: true,
-      },
-    })
-
-    return {
-      success: true,
-      updated: result.count,
-    }
+    return notificationService.markAllNotificationsRead(user.id)
   })
   .patch(
     '/:notificationId/read',
@@ -95,25 +45,17 @@ export const notificationRoutes = new Elysia({ prefix: '/notifications' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      const notification = await prisma.notification.findFirst({
-        where: {
-          id: params.notificationId,
-          recipientId: user.id,
-        },
-      })
+      const notification = await notificationService.markNotificationRead(
+        params.notificationId,
+        user.id,
+      )
 
       if (!notification) {
         set.status = 404
         return errorPayload('Notifikasi tidak ditemukan.')
       }
 
-      const updatedNotification = await prisma.notification.update({
-        where: { id: notification.id },
-        data: { isRead: true },
-        include: notificationInclude,
-      })
-
-      return { notification: updatedNotification }
+      return { notification }
     },
     { params: t.Object({ notificationId: t.String() }) },
   )

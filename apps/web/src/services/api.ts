@@ -3,7 +3,7 @@ import type { NotificationsResponse } from '@ppwl/shared'
 import type { PostComment } from '@/types/social'
 import { useAuthStore } from '@/stores'
 
-type FeedResponse = {
+export type FeedResponse = {
   posts: FeedPost[]
   meta: {
     total: number

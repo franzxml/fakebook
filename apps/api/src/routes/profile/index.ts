@@ -1,9 +1,7 @@
 import { Elysia, t } from 'elysia'
-import { prisma } from '../../db'
 import { getCurrentUser, getSessionToken, toPublicUser } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
-import { isUniqueConstraintError } from '../../lib/prisma-errors'
-import { validateProfileUpdate } from '../../services/profile-service'
+import * as profileService from '../../services/profile-service'
 
 const NAME_MAX_LENGTH = 100
 const USERNAME_MIN_LENGTH = 3
@@ -25,28 +23,7 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
       return errorPayload('Sesi tidak valid.')
     }
 
-    const profile = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        email: true,
-        avatarUrl: true,
-        bio: true,
-        emailVerifiedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            posts: true,
-            comments: true,
-            likes: true,
-          },
-        },
-      },
-    })
-
+    const profile = await profileService.getProfile(user.id)
     return { profile }
   })
 
@@ -67,29 +44,21 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
         return errorPayload('Tidak ada data yang diperbarui.')
       }
 
-      const result = await validateProfileUpdate(user.id, body)
+      const validated = await profileService.validateProfileUpdate(user.id, body)
+
+      if (!validated.ok) {
+        set.status = validated.error.status
+        return errorPayload(validated.error.message)
+      }
+
+      const result = await profileService.updateProfile(user.id, validated.data)
 
       if (!result.ok) {
-        set.status = result.error.status
-        return errorPayload(result.error.message)
+        set.status = result.status
+        return errorPayload(result.message)
       }
 
-      try {
-        const updatedUser = await prisma.user.update({
-          where: { id: user.id },
-          data: result.data,
-        })
-
-        return { user: toPublicUser(updatedUser) }
-      } catch (error) {
-        // Race: validasi unik email/username lolos tapi user lain commit
-        // duluan — tangkap P2002 dan balas 409 alih-alih 500.
-        if (isUniqueConstraintError(error)) {
-          set.status = 409
-          return errorPayload('Email atau username sudah digunakan.')
-        }
-        throw error
-      }
+      return { user: toPublicUser(result.user) }
     },
     {
       body: t.Object({
@@ -114,46 +83,13 @@ export const profileRoutes = new Elysia({ prefix: '/profile' })
         return errorPayload('Sesi tidak valid.')
       }
 
-      const userWithPassword = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { passwordHash: true },
-      })
-
-      if (!userWithPassword?.passwordHash) {
-        set.status = 400
-        return errorPayload('Akun Google tidak bisa ganti password di sini.')
-      }
-
-      const isValid = await Bun.password.verify(body.currentPassword, userWithPassword.passwordHash)
-      if (!isValid) {
-        set.status = 401
-        return errorPayload('Password saat ini tidak sesuai.')
-      }
-
-      const isSame = await Bun.password.verify(body.newPassword, userWithPassword.passwordHash)
-      if (isSame) {
-        set.status = 400
-        return errorPayload('Password baru tidak boleh sama dengan yang lama.')
-      }
-
-      const newPasswordHash = await Bun.password.hash(body.newPassword)
       const currentToken = getSessionToken(request.headers)
+      const result = await profileService.changePassword(user.id, body.currentPassword, body.newPassword, currentToken)
 
-      // Transaksi: ganti password sekaligus revoke semua sesi lain.
-      // Sesi yang sedang dipakai tetap hidup agar user tidak ter-logout.
-      await prisma.$transaction(async (tx) => {
-        await tx.user.update({
-          where: { id: user.id },
-          data: { passwordHash: newPasswordHash },
-        })
-
-        await tx.session.deleteMany({
-          where: {
-            userId: user.id,
-            ...(currentToken ? { token: { not: currentToken } } : {}),
-          },
-        })
-      })
+      if (!result.ok) {
+        set.status = result.status
+        return errorPayload(result.message)
+      }
 
       return { success: true, message: 'Password berhasil diperbarui.' }
     },

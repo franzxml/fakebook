@@ -1,6 +1,8 @@
 import { create } from 'zustand'
+import type { NotificationsResponse } from '@ppwl/shared'
 import { connectRealtimeSocket, disconnectRealtimeSocket } from '@/lib/realtime-socket'
-import { useNotificationStore } from './notification-store'
+import { queryClient } from '@/lib/query-client'
+import { useAuthStore } from './auth-store'
 
 type RealtimeStore = {
   socketConnected: boolean
@@ -14,8 +16,6 @@ type RealtimeStore = {
 // dan difallback ke null sebelum dipakai.
 const configuredWebsocketUrl = (import.meta.env.VITE_WEBSOCKET_URL as string | undefined)?.trim() || null
 
-// Manajemen koneksi WebSocket (reconnect, parsing pesan) hidup di
-// lib/realtime-socket.ts — store ini hanya memegang state koneksi.
 export const useRealtimeStore = create<RealtimeStore>((set) => ({
   socketConnected: false,
   socketError: null,
@@ -28,7 +28,24 @@ export const useRealtimeStore = create<RealtimeStore>((set) => ({
       onDisconnected: () => set({ socketConnected: false }),
       onError: (message) => set({ socketError: message }),
       onNotification: (notification) => {
-        useNotificationStore.getState().prependNotification(notification)
+        const currentToken = useAuthStore.getState().token
+        if (!currentToken) return
+
+        queryClient.setQueryData<NotificationsResponse>(
+          ['notifications', currentToken],
+          (old) => {
+            if (!old) return old
+            const nextNotifications = [
+              notification,
+              ...old.notifications.filter((n) => n.id !== notification.id),
+            ]
+            return {
+              ...old,
+              notifications: nextNotifications,
+              unreadCount: nextNotifications.filter((n) => !n.isRead).length,
+            }
+          },
+        )
       },
       onFeedChanged: (payload) => {
         window.dispatchEvent(new CustomEvent('fakebook:feed-changed', { detail: payload }))

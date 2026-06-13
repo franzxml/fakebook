@@ -1,17 +1,12 @@
 import { Bell, CheckCheck, MessageCircle, MoreHorizontal, ThumbsUp } from 'lucide-react'
 import { useState } from 'react'
-import { getStoredSession } from '@/services/api'
 import { HomeTopBar } from '@/routes/home/components/home-top-bar'
 import { getNotificationContent, getNotificationKind } from '@/lib/notification-display'
 import { getRelativeTime, groupNotificationsByRecency } from '@/lib/notification-utils'
 import { getDisplayName } from '@/lib/user-display'
-import { useAuthStore, useNotificationStore } from '@/stores'
+import { useAuthStore } from '@/stores'
+import { useMarkAllAsReadMutation, useMarkAsReadMutation, useNotificationsQuery } from '@/hooks/use-notifications'
 import type { AppNotification, PublicAuthor } from '@/types/social'
-
-type NotificationsPageProps = {
-  notifications: AppNotification[]
-  token?: string | null
-}
 
 type FilterMode = 'all' | 'unread'
 
@@ -75,28 +70,22 @@ function NotificationItem({
   )
 }
 
-export function NotificationsPage({ notifications, token }: NotificationsPageProps) {
-  const authToken = token ?? getStoredSession()?.token ?? null
+export function NotificationsPage() {
   const currentUser = useAuthStore((state) => state.user)
-  const storeItems = useNotificationStore((state) => state.notifications)
-  const unreadCount = useNotificationStore((state) => state.unreadCount)
-  const isLoading = useNotificationStore((state) => state.isLoading)
-  const isUpdating = useNotificationStore((state) => state.isUpdating)
-  const error = useNotificationStore((state) => state.error)
-  const markNotificationAsRead = useNotificationStore((state) => state.markAsRead)
-  const markEveryNotificationAsRead = useNotificationStore((state) => state.markAllAsRead)
-  const items = storeItems.length > 0 ? storeItems : notifications
+  const token = useAuthStore((state) => state.token)
+  const { data, isLoading, isError } = useNotificationsQuery(token)
+  const markAsReadMutation = useMarkAsReadMutation(token)
+  const markAllAsReadMutation = useMarkAllAsReadMutation(token)
   const [mode, setMode] = useState<FilterMode>('all')
 
+  const items = data?.notifications ?? []
+  const unreadCount = data?.unreadCount ?? 0
+  const isUpdating = markAsReadMutation.isPending || markAllAsReadMutation.isPending
+  const error = isError
+    ? 'Notifikasi belum bisa dimuat dari server.'
+    : (markAsReadMutation.error?.message ?? markAllAsReadMutation.error?.message ?? null)
+
   const { recent: newItems, previous: previousItems, filtered: filteredItems } = groupNotificationsByRecency(items, mode)
-
-  async function markAsRead(notificationId: string) {
-    await markNotificationAsRead(notificationId, authToken)
-  }
-
-  async function markAllAsRead() {
-    await markEveryNotificationAsRead(authToken)
-  }
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-gray-950">
@@ -130,7 +119,7 @@ export function NotificationsPage({ notifications, token }: NotificationsPagePro
             <button
               className="flex items-center gap-1 rounded-md px-2 py-1 text-sm font-semibold text-blue-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
               disabled={isUpdating || unreadCount === 0}
-              onClick={markAllAsRead}
+              onClick={() => void markAllAsReadMutation.mutate()}
             >
               <CheckCheck size={16} aria-hidden="true" />
               Tandai semua
@@ -161,7 +150,7 @@ export function NotificationsPage({ notifications, token }: NotificationsPagePro
                   key={notification.id}
                   notification={notification}
                   disabled={isUpdating}
-                  onRead={markAsRead}
+                  onRead={(id) => void markAsReadMutation.mutate(id)}
                 />
               ))}
             </div>
@@ -176,7 +165,7 @@ export function NotificationsPage({ notifications, token }: NotificationsPagePro
                     key={notification.id}
                     notification={notification}
                     disabled={isUpdating}
-                    onRead={markAsRead}
+                    onRead={(id) => void markAsReadMutation.mutate(id)}
                   />
                 ))}
               </div>
