@@ -28,7 +28,7 @@
 - Upload avatar pengguna melalui presigned URL S3
 - Ubah nama, username, bio, email, avatar, dan password
 - Logout
-- State management frontend menggunakan Zustand
+- State management frontend menggunakan Zustand dan TanStack Query
 - Struktur frontend modular per fitur
 
 ## Teknologi
@@ -46,122 +46,127 @@
 
 ```
 fakebook/
-|-- apps/
-|   |-- api/
-|   |   |-- prisma/
-|   |   |   |-- migrations/
-|   |   |   |-- schema.prisma          SQLite (lokal dev)
-|   |   |   |-- schema-pg.prisma       PostgreSQL (production)
-|   |   |   `-- seed-home-feed.sql
-|   |   |-- scripts/
-|   |   |   `-- backfill-usernames.mjs
-|   |   |-- src/
-|   |   |   |-- db/
-|   |   |   |   |-- index.ts           unified client (RDS → Turso fallback)
-|   |   |   |   |-- db.ts              libSQL/Turso client
-|   |   |   |   `-- db-postgres.ts     PostgreSQL RDS client
-|   |   |   |-- generated/             hasil Prisma generate (tidak diedit)
-|   |   |   |-- http/
-|   |   |   |   |-- auth.ts
-|   |   |   |   `-- errors.ts
-|   |   |   |-- lib/
-|   |   |   |   |-- prisma-errors.ts   helper deteksi error Prisma (P2002)
-|   |   |   |   |-- prisma-selects.ts  shared Prisma select/include constants
-|   |   |   |   `-- user-utils.ts      username normalization & generation
-|   |   |   |-- realtime/
-|   |   |   |   `-- broadcast.ts
-|   |   |   |-- routes/
-|   |   |   |   |-- auth/
-|   |   |   |   |-- comments/
-|   |   |   |   |-- notifications/
-|   |   |   |   |-- posts/
-|   |   |   |   |-- profile/
-|   |   |   |   |-- uploads/
-|   |   |   |   `-- users/
-|   |   |   |-- services/
-|   |   |   |   |-- comment-service.ts
-|   |   |   |   |-- google-auth-service.ts
-|   |   |   |   `-- profile-service.ts
-|   |   |   |-- index.ts               entry point HTTP Lambda
-|   |   |   `-- ws-handler.ts          entry point WebSocket Lambda
-|   |   |-- Dockerfile.lambda
-|   |   |-- eslint.config.js
-|   |   |-- package.json
-|   |   |-- prisma.config.ts
-|   |   `-- tsconfig.json
-|   `-- web/
-|       |-- public/
-|       |   |-- images/
-|       |   |   `-- auth/
-|       |   `-- favicon.svg
-|       |-- src/
-|       |   |-- components/
-|       |   |   `-- avatar.tsx          shared avatar component lintas route
-|       |   |-- hooks/
-|       |   |   `-- use-notification-sync.ts
-|       |   |-- layouts/
-|       |   |   `-- app-layout.tsx
-|       |   |-- lib/
-|       |   |   |-- navigation.ts
-|       |   |   |-- notification-display.tsx
-|       |   |   |-- notification-utils.ts
-|       |   |   |-- realtime-socket.ts  manajemen koneksi WebSocket + reconnect
-|       |   |   |-- user-display.ts
-|       |   |   `-- validate-image-file.ts
-|       |   |-- routes/
-|       |   |   |-- auth/
-|       |   |   |   |-- components/
-|       |   |   |   |-- hooks/
-|       |   |   |   |-- forgot-password-page.tsx
-|       |   |   |   |-- login-page.tsx
-|       |   |   |   `-- register-page.tsx
-|       |   |   |-- home/
-|       |   |   |   |-- components/
-|       |   |   |   `-- home-page.tsx
-|       |   |   |-- notifications/
-|       |   |   |   `-- notifications-page.tsx
-|       |   |   |-- posts/
-|       |   |   |   |-- components/
-|       |   |   |   |-- hooks/
-|       |   |   |   |-- utils/
-|       |   |   |   |-- post-detail-page.tsx
-|       |   |   |   `-- post-detail-route.tsx   halaman deep link /posts/:id
-|       |   |   |-- profile/
-|       |   |   |   |-- hooks/
-|       |   |   |   `-- profile-page.tsx
-|       |   |   `-- users/
-|       |   |       |-- public-user-profile-page.tsx
-|       |   |       `-- users-page.tsx
-|       |   |-- services/
-|       |   |   `-- api.ts
-|       |   |-- stores/
-|       |   |   |-- auth-store.ts
-|       |   |   |-- feed-store.ts
-|       |   |   |-- index.ts
-|       |   |   |-- notification-store.ts
-|       |   |   |-- realtime-store.ts
-|       |   |   `-- ui-store.ts
-|       |   |-- types/
-|       |   |   `-- social.ts
-|       |   |-- app.tsx
-|       |   |-- index.css
-|       |   `-- main.tsx
-|       |-- eslint.config.js
-|       |-- index.html
-|       |-- package.json
-|       |-- tsconfig.app.json
-|       |-- tsconfig.json
-|       |-- tsconfig.node.json
-|       `-- vite.config.ts
-|-- packages/
-|   `-- shared/
-|       |-- src/
-|       |   `-- index.ts
-|       |-- package.json
-|       `-- tsconfig.json
-|-- bun.lock
-|-- package.json
-`-- tsconfig.base.json
+├── apps/
+│   ├── api/
+│   │   ├── prisma/
+│   │   │   ├── migrations/
+│   │   │   ├── schema.prisma          SQLite (lokal dev)
+│   │   │   ├── schema-pg.prisma       PostgreSQL (production)
+│   │   │   └── seed-home-feed.sql
+│   │   ├── scripts/
+│   │   │   └── backfill-usernames.mjs
+│   │   ├── src/
+│   │   │   ├── db/
+│   │   │   │   ├── index.ts           unified client (RDS → Turso fallback)
+│   │   │   │   ├── db.ts              libSQL/Turso client
+│   │   │   │   └── db-postgres.ts     PostgreSQL RDS client
+│   │   │   ├── generated/             hasil Prisma generate (tidak diedit)
+│   │   │   ├── http/
+│   │   │   │   ├── auth.ts
+│   │   │   │   └── errors.ts
+│   │   │   ├── lib/
+│   │   │   │   ├── prisma-errors.ts   helper deteksi error Prisma (P2002)
+│   │   │   │   ├── prisma-selects.ts  shared Prisma select/include constants
+│   │   │   │   └── user-utils.ts      username normalization & generation
+│   │   │   ├── realtime/
+│   │   │   │   └── broadcast.ts
+│   │   │   ├── routes/
+│   │   │   │   ├── auth/
+│   │   │   │   ├── comments/
+│   │   │   │   ├── notifications/
+│   │   │   │   ├── posts/
+│   │   │   │   ├── profile/
+│   │   │   │   ├── uploads/
+│   │   │   │   └── users/
+│   │   │   ├── services/
+│   │   │   │   ├── auth-service.ts
+│   │   │   │   ├── comment-service.ts
+│   │   │   │   ├── google-auth-service.ts
+│   │   │   │   ├── like-service.ts
+│   │   │   │   ├── notification-service.ts
+│   │   │   │   ├── post-service.ts
+│   │   │   │   ├── profile-service.ts
+│   │   │   │   └── user-service.ts
+│   │   │   ├── index.ts               entry point HTTP Lambda
+│   │   │   └── ws-handler.ts          entry point WebSocket Lambda
+│   │   ├── Dockerfile.lambda
+│   │   ├── eslint.config.js
+│   │   ├── package.json
+│   │   ├── prisma.config.ts
+│   │   └── tsconfig.json
+│   └── web/
+│       ├── public/
+│       │   ├── images/
+│       │   │   └── auth/
+│       │   └── favicon.svg
+│       ├── src/
+│       │   ├── components/
+│       │   │   └── avatar.tsx          shared avatar component lintas route
+│       │   ├── hooks/
+│       │   │   ├── use-notification-sync.ts
+│       │   │   └── use-notifications.ts
+│       │   ├── layouts/
+│       │   │   └── app-layout.tsx
+│       │   ├── lib/
+│       │   │   ├── navigation.ts
+│       │   │   ├── notification-display.tsx
+│       │   │   ├── notification-utils.ts
+│       │   │   ├── query-client.ts
+│       │   │   ├── realtime-socket.ts  manajemen koneksi WebSocket + reconnect
+│       │   │   ├── user-display.ts
+│       │   │   └── validate-image-file.ts
+│       │   ├── routes/
+│       │   │   ├── auth/
+│       │   │   │   ├── components/
+│       │   │   │   ├── hooks/
+│       │   │   │   ├── forgot-password-page.tsx
+│       │   │   │   ├── login-page.tsx
+│       │   │   │   └── register-page.tsx
+│       │   │   ├── home/
+│       │   │   │   ├── components/
+│       │   │   │   └── home-page.tsx
+│       │   │   ├── notifications/
+│       │   │   │   └── notifications-page.tsx
+│       │   │   ├── posts/
+│       │   │   │   ├── components/
+│       │   │   │   ├── hooks/
+│       │   │   │   ├── utils/
+│       │   │   │   ├── post-detail-page.tsx
+│       │   │   │   └── post-detail-route.tsx   halaman deep link /posts/:id
+│       │   │   ├── profile/
+│       │   │   │   ├── hooks/
+│       │   │   │   └── profile-page.tsx
+│       │   │   └── users/
+│       │   │       ├── public-user-profile-page.tsx
+│       │   │       └── users-page.tsx
+│       │   ├── services/
+│       │   │   └── api.ts
+│       │   ├── stores/
+│       │   │   ├── auth-store.ts
+│       │   │   ├── index.ts
+│       │   │   ├── realtime-store.ts
+│       │   │   └── ui-store.ts
+│       │   ├── types/
+│       │   │   └── social.ts
+│       │   ├── app.tsx
+│       │   ├── index.css
+│       │   └── main.tsx
+│       ├── eslint.config.js
+│       ├── index.html
+│       ├── package.json
+│       ├── tsconfig.app.json
+│       ├── tsconfig.json
+│       ├── tsconfig.node.json
+│       └── vite.config.ts
+├── packages/
+│   └── shared/
+│       ├── src/
+│       │   └── index.ts
+│       ├── package.json
+│       └── tsconfig.json
+├── bun.lock
+├── package.json
+└── tsconfig.base.json
 ```
 
 ## Cara Menjalankan
@@ -282,7 +287,7 @@ AWS_S3_BUCKET=s3-monorepo-frontend-prod-2026 bun run deploy:web:s3
 AWS_CLOUDFRONT_DISTRIBUTION_ID=E3PHP2PBFP7CIC bun run deploy:web:invalidate
 ```
 
-URL production: [https://d3b2jcy5w87rzf.cloudfront.net/](https://d3b2jcy5w87rzf.cloudfront.net/)
+URL production: https://d3b2jcy5w87rzf.cloudfront.net
 
 ### Backend
 
@@ -302,7 +307,7 @@ aws lambda update-function-code \
   --image-uri 722765871100.dkr.ecr.us-east-1.amazonaws.com/ppwl-clone-facebook-api:<tag>
 ```
 
-URL production: [https://2gtrnedjhmootg6bu5e24kwdmq0oyuns.lambda-url.us-east-1.on.aws/](https://2gtrnedjhmootg6bu5e24kwdmq0oyuns.lambda-url.us-east-1.on.aws/)
+URL production: https://2gtrnedjhmootg6bu5e24kwdmq0oyuns.lambda-url.us-east-1.on.aws
 
 ### Database Production
 
