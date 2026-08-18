@@ -27,6 +27,14 @@ function isProtectedPath(pathname: string) {
 }
 
 function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
+    </QueryClientProvider>
+  )
+}
+
+function AppContent() {
   const [pathname, setPathname] = useState(() => window.location.pathname)
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(false)
   const currentUser = useAuthStore((state) => state.user)
@@ -108,13 +116,13 @@ function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <>
       <Suspense fallback={<PageLoadingFallback />}>
         {page}
       </Suspense>
       {isWelcomeVisible && currentUser ? <WelcomePopup name={currentUser.name} /> : null}
       <Toaster richColors position="top-right" />
-    </QueryClientProvider>
+    </>
   )
 }
 

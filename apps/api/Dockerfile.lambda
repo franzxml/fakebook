@@ -7,22 +7,71 @@ COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
 RUN bun install --frozen-lockfile
 
+FROM oven/bun:1.3.11 AS production-deps
+WORKDIR /app
+
+COPY package.json bun.lock tsconfig.base.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/shared/package.json packages/shared/package.json
+RUN bun install --production --frozen-lockfile
+
+FROM deps AS build
+WORKDIR /app
+
+COPY package.json bun.lock tsconfig.base.json ./
+COPY apps/api ./apps/api
+COPY packages/shared ./packages/shared
+RUN bun --cwd apps/api prisma generate \
+  && bun --cwd apps/api prisma generate --config prisma-pg.config.ts
+
+FROM deps AS migrations
+WORKDIR /app
+
+COPY package.json bun.lock tsconfig.base.json ./
+
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends ca-certificates curl \
+  && mkdir -p /opt/rds-ca \
+  && curl --fail --silent --show-error --location \
+    https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem \
+    --output /opt/rds-ca/us-east-1-bundle.pem \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY apps/api ./apps/api
+COPY packages/shared ./packages/shared
+
+ENV NODE_ENV=production
+ENV RDS_CA_BUNDLE_PATH=/opt/rds-ca/us-east-1-bundle.pem
+
+WORKDIR /app/apps/api
+USER bun
+CMD ["bun", "run", "prisma:migrate:pg"]
+
 FROM oven/bun:1.3.11 AS runner
 WORKDIR /app
 
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.1 /lambda-adapter /opt/extensions/lambda-adapter
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=production-deps /app/node_modules ./node_modules
+COPY --from=production-deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY package.json bun.lock tsconfig.base.json ./
 COPY apps/api ./apps/api
 COPY packages/shared ./packages/shared
+COPY --from=build /app/apps/api/src/generated ./apps/api/src/generated
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV AWS_LWA_PORT=3000
 ENV AWS_LWA_READINESS_CHECK_PATH=/health
+ENV RDS_CA_BUNDLE_PATH=/opt/rds-ca/us-east-1-bundle.pem
 
-RUN bun --cwd apps/api prisma generate
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends ca-certificates curl \
+  && mkdir -p /opt/rds-ca \
+  && curl --fail --silent --show-error --location \
+    https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem \
+    --output /opt/rds-ca/us-east-1-bundle.pem \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/apps/api
 USER bun

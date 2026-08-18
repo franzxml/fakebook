@@ -11,10 +11,16 @@ import { profileRoutes } from './routes/profile'
 import { uploadRoutes } from './routes/uploads'
 import { userRoutes } from './routes/users'
 
-const allowedCorsOrigins = config.corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean)
+const allowedCorsOrigins = config.corsOrigin
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
 
 const app = new Elysia()
 
+// Lambda Function URL already owns production CORS headers. Applying the
+// middleware there as well produces duplicate Access-Control-Allow-Origin
+// headers, which browsers reject before the authentication response reaches UI.
 if (!config.isAwsLambda) {
   app.use(cors({ origin: allowedCorsOrigins }))
 }
