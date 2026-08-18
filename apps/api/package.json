@@ -7,17 +7,19 @@
     "bun": ">=1.3.0"
   },
   "scripts": {
-    "dev": "prisma generate && bun --watch src/index.ts",
+    "dev": "prisma generate && prisma generate --config prisma-pg.config.ts && bun --watch src/index.ts",
     "start": "bun src/index.ts",
-    "build": "prisma generate && bun build src/index.ts --outdir dist --target bun",
-    "typecheck": "prisma generate && tsc --noEmit",
+    "build": "prisma generate && prisma generate --config prisma-pg.config.ts && bun build src/index.ts --outdir dist --target bun",
+    "typecheck": "prisma generate && prisma generate --config prisma-pg.config.ts && tsc --noEmit",
     "prisma": "prisma",
     "prisma:generate": "prisma generate",
-    "prisma:generate:pg": "prisma generate --schema prisma/schema-pg.prisma",
+    "prisma:generate:pg": "prisma generate --config prisma-pg.config.ts",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:migrate:pg": "prisma migrate deploy --schema prisma/schema-pg.prisma",
+    "prisma:migrate:pg": "prisma migrate deploy --config prisma-pg.config.ts",
+    "prisma:migrate:pg:status": "prisma migrate status --config prisma-pg.config.ts",
+    "prisma:verify:pg": "bun scripts/check-postgres-migrations.mjs",
     "prisma:studio": "prisma studio",
-    "prisma:studio:pg": "prisma studio --schema prisma/schema-pg.prisma",
+    "prisma:studio:pg": "prisma studio --config prisma-pg.config.ts",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -29,8 +31,10 @@
     "@libsql/client": "^0.17.3",
     "@ppwl/shared": "workspace:*",
     "@prisma/adapter-libsql": "^7.8.0",
+    "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
-    "elysia": "^1.4.28"
+    "elysia": "^1.4.28",
+    "pg": "^8.16.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

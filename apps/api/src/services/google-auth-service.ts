@@ -26,6 +26,22 @@ export type GoogleProfile = {
   avatarUrl: string | null
 }
 
+export class GoogleServiceUnavailableError extends Error {
+  constructor() {
+    super('Layanan verifikasi Google tidak dapat dihubungi. Silakan coba lagi.')
+    this.name = 'GoogleServiceUnavailableError'
+  }
+}
+
+async function fetchGoogle(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(10_000) })
+  } catch (error) {
+    console.error('[google-auth] Gagal menghubungi layanan Google:', error)
+    throw new GoogleServiceUnavailableError()
+  }
+}
+
 function buildProfile(sub: string, email: string, name: string, picture?: string): GoogleProfile {
   return {
     providerAccountId: sub,
@@ -40,7 +56,7 @@ export async function verifyGoogleCredential(credential: string): Promise<Google
 
   if (!googleClientId) throw new Error('GOOGLE_CLIENT_ID belum dikonfigurasi.')
 
-  const response = await fetch(
+  const response = await fetchGoogle(
     `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
   )
 
@@ -57,7 +73,7 @@ export async function verifyGoogleCredential(credential: string): Promise<Google
 }
 
 export async function verifyGoogleAccessToken(accessToken: string): Promise<GoogleProfile> {
-  const response = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+  const response = await fetchGoogle('https://openidconnect.googleapis.com/v1/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
 

@@ -102,17 +102,27 @@ export async function apiRequest<TResponse>(path: string, options: RequestOption
     headers.set('Authorization', `Bearer ${options.token}`)
   }
 
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  })
+  let response: Response
+
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    })
+  } catch (error) {
+    console.error('[api] Request jaringan gagal:', error)
+    throw new Error('Layanan sedang tidak dapat dihubungi. Silakan coba lagi beberapa saat lagi.', {
+      cause: error,
+    })
+  }
 
   if (!response.ok) {
     const payload = await response.json().catch(() => null)
-    const message = payload && typeof payload === 'object' && 'error' in payload
-      ? String(payload.error)
-      : 'Request API gagal.'
+    const rawMessage =
+      payload && typeof payload === 'object' && 'error' in payload ? payload.error : null
+    const message =
+      typeof rawMessage === 'string' && rawMessage.trim() ? rawMessage : 'Request API gagal.'
 
     throw new Error(message)
   }
@@ -135,7 +145,7 @@ export function getStoredSession(): SessionPayload | null {
   try {
     const rawSession = localStorage.getItem('session')
     // as: JSON.parse mengembalikan any; data ditulis sendiri via saveAuthSession
-    return rawSession ? JSON.parse(rawSession) as SessionPayload : null
+    return rawSession ? (JSON.parse(rawSession) as SessionPayload) : null
   } catch (error) {
     console.warn('[api] localStorage session rusak:', error)
     return null
@@ -149,7 +159,7 @@ export function getStoredUser(): PublicUser | null {
   try {
     const rawUser = localStorage.getItem('user')
     // as: JSON.parse mengembalikan any; data ditulis sendiri via saveAuthSession
-    return rawUser ? JSON.parse(rawUser) as PublicUser : null
+    return rawUser ? (JSON.parse(rawUser) as PublicUser) : null
   } catch (error) {
     console.warn('[api] localStorage user rusak:', error)
     return null
@@ -235,7 +245,9 @@ export async function fetchFeed(page = 1, limit = 10): Promise<FeedResponse> {
 }
 
 /* Ambil satu postingan beserta komentarnya (untuk halaman detail /posts/:id) */
-export async function fetchPostDetail(postId: string): Promise<{ post: FeedPost & { comments: PostComment[] } }> {
+export async function fetchPostDetail(
+  postId: string,
+): Promise<{ post: FeedPost & { comments: PostComment[] } }> {
   return apiRequest<{ post: FeedPost & { comments: PostComment[] } }>(`/posts/${postId}`, {
     token: getStoredSession()?.token,
   })
@@ -263,7 +275,11 @@ export async function createPostComment(
   return response.comment
 }
 
-export async function updateComment(commentId: string, content: string, token: string): Promise<PostComment> {
+export async function updateComment(
+  commentId: string,
+  content: string,
+  token: string,
+): Promise<PostComment> {
   const response = await apiRequest<{ comment: PostComment }>(`/comments/${commentId}`, {
     method: 'PATCH',
     token,
@@ -363,4 +379,3 @@ export async function deletePost(postId: string, token: string) {
     token,
   })
 }
-

@@ -10,7 +10,13 @@ import {
 } from '../../http/auth'
 import { errorPayload } from '../../http/errors'
 import { usernameFromProfile, createUniqueUsername } from '../../lib/user-utils'
-import { verifyGoogleCredential, verifyGoogleAccessToken, loginWithGoogle, type GoogleProfile } from '../../services/google-auth-service'
+import {
+  GoogleServiceUnavailableError,
+  verifyGoogleCredential,
+  verifyGoogleAccessToken,
+  loginWithGoogle,
+  type GoogleProfile,
+} from '../../services/google-auth-service'
 import * as authService from '../../services/auth-service'
 
 const NAME_MAX_LENGTH = 100
@@ -90,7 +96,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           throw new Error('Credential Google tidak tersedia.')
         }
       } catch (error) {
-        set.status = 401
+        set.status = error instanceof GoogleServiceUnavailableError ? 503 : 401
         return errorPayload(error instanceof Error ? error.message : 'Login Google gagal.')
       }
 
